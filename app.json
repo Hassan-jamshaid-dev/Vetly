@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Vetly",
+    "slug": "vetly",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "vetly",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vetly.app"
+    },
+    "android": {
+      "package": "com.vetly.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#F5F6FB"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F5F6FB"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Vetly needs access to your photos so you can upload a screenshot of an opportunity."
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "84c1a658-cca3-4e5d-a4a1-ef58c21758ee"
+      }
+    },
+    "owner": "vetly"
+  }
+}

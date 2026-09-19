@@ -1,0 +1,60 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+build/
+web-build/
+expo-env.d.ts
+
+# Native (Expo managed, no native folders yet)
+android/
+ios/
+.kotlin/
+*.orig.*
+*.jks
+*.keystore
+*.p8
+*.p12
+*.pfx
+*.key
+*.pem
+*.mobileprovision
+credentials.json
+service-account.json
+
+# Metro
+.metro-health-check*
+
+# debug / logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# macOS
+.DS_Store
+
+# local env files (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# scratch scripts / screenshots (never commit)
+.tmp*
+
+# typescript
+*.tsbuildinfo
+
+# Local Netlify folder
+.netlify
+
+# Supabase CLI scratch
+supabase/.temp/
+
+# Local Expo agent skills (do not push — they double the tree)
+.agents/
+skills-lock.json
