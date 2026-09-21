@@ -2,14 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/Card';
-import { GradientButton } from '@/components/GradientButton';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
+import { StickyBottomButton } from '@/components/StickyBottomButton';
 import { firstQueryParam } from '@/navigation/queryParam';
 import { useFinishPremiumSetup } from '@/navigation/useResetToHome';
 import { getProfile, updateProfile } from '@/storage/profileStorage';
@@ -27,7 +25,6 @@ type PickedFile = {
 export default function ResumeScreen() {
   const router = useRouter();
   const finishPremiumSetup = useFinishPremiumSetup();
-  const insets = useSafeAreaInsets();
   const { mode } = useLocalSearchParams<{ mode?: string | string[] }>();
   const isEdit = firstQueryParam(mode) === 'edit';
   const [file, setFile] = useState<PickedFile | null>(null);
@@ -115,101 +112,91 @@ export default function ResumeScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="dark" />
-      <ScreenHeader
-        onBack={() => {
-          if (isEdit) {
-            if (router.canGoBack()) router.back();
-            else router.replace('/(tabs)/profile');
-            return;
-          }
-          finishPremiumSetup();
-        }}
-        title="Resume"
-        withSafeArea
-      />
-
-      <View style={[styles.body, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <Text style={styles.heading}>{isEdit ? 'Update your resume' : 'Add a resume'}</Text>
-        <Text style={styles.subheading}>
-          Optional. We only keep the file name and a local link — nothing is uploaded or read. Skip
-          for now if you want; you can add it later from the bottom of Profile.
-        </Text>
-
-        <Card style={styles.card}>
-          <View style={styles.iconWrap}>
-            <Ionicons name="document-text-outline" size={28} color={colors.purple} />
-          </View>
-          <Text style={styles.cardTitle}>PDF or image</Text>
-          <Text style={styles.cardBody}>
-            In Expo Go, PDFs may not appear. Pick an image of your resume, or skip — a full PDF
-            picker lands on a development build later.
-          </Text>
-
-          {file ? (
-            <View style={styles.fileRow}>
-              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-              <Text style={styles.fileName} numberOfLines={1}>
-                {file.name}
-              </Text>
-              <Pressable
-                onPress={() => setFile(null)}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Remove file"
-                style={({ pressed }) => pressed && styles.pressed}
-              >
-                <Ionicons name="close" size={18} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable
-              onPress={() => {
-                void handlePick();
-              }}
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}
-            >
-              <Ionicons name="cloud-upload-outline" size={18} color={colors.purple} />
-              <Text style={styles.pickLabel}>Choose file</Text>
-            </Pressable>
-          )}
-        </Card>
-
-        <View style={styles.spacer} />
-
-        <GradientButton
+    <ScreenWrapper
+      title="Resume"
+      onBack={() => {
+        if (isEdit) {
+          if (router.canGoBack()) router.back();
+          else router.replace('/(tabs)/profile');
+          return;
+        }
+        finishPremiumSetup();
+      }}
+      contentContainerStyle={styles.body}
+      footer={
+        <StickyBottomButton
           label={busy ? 'Continuing...' : 'Continue'}
           onPress={() => {
             void finish(true);
           }}
           disabled={busy}
-        />
-        {isEdit ? null : (
+        >
+          {isEdit ? null : (
+            <Pressable
+              onPress={() => {
+                void finish(false);
+              }}
+              disabled={busy}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.skip, pressed && styles.pressed]}
+            >
+              <Text style={styles.skipLabel}>Skip for now</Text>
+            </Pressable>
+          )}
+        </StickyBottomButton>
+      }
+    >
+      <Text style={styles.heading}>{isEdit ? 'Update your resume' : 'Add a resume'}</Text>
+      <Text style={styles.subheading}>
+        Optional. We only keep the file name and a local link — nothing is uploaded or read. Skip
+        for now if you want; you can add it later from the bottom of Profile.
+      </Text>
+
+      <Card style={styles.card}>
+        <View style={styles.iconWrap}>
+          <Ionicons name="document-text-outline" size={28} color={colors.purple} />
+        </View>
+        <Text style={styles.cardTitle}>PDF or image</Text>
+        <Text style={styles.cardBody}>
+          In Expo Go, PDFs may not appear. Pick an image of your resume, or skip — a full PDF
+          picker lands on a development build later.
+        </Text>
+
+        {file ? (
+          <View style={styles.fileRow}>
+            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+            <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="tail">
+              {file.name}
+            </Text>
+            <Pressable
+              onPress={() => setFile(null)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Remove file"
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <Ionicons name="close" size={18} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+        ) : (
           <Pressable
             onPress={() => {
-              void finish(false);
+              void handlePick();
             }}
-            disabled={busy}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.skip, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}
           >
-            <Text style={styles.skipLabel}>Skip for now</Text>
+            <Ionicons name="cloud-upload-outline" size={18} color={colors.purple} />
+            <Text style={styles.pickLabel}>Choose file</Text>
           </Pressable>
         )}
-      </View>
-    </View>
+      </Card>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSoft,
-  },
   body: {
-    flex: 1,
     paddingHorizontal: 24,
     paddingTop: 8,
   },
@@ -284,10 +271,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: 14,
     color: colors.textPrimary,
-  },
-  spacer: {
-    flex: 1,
-    minHeight: 24,
   },
   skip: {
     marginTop: 16,

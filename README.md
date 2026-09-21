@@ -2,9 +2,13 @@
 
 **know before you go**
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Expo SDK 57](https://img.shields.io/badge/Expo-SDK%2057-000020?logo=expo&logoColor=white)](https://docs.expo.dev)
+[![RevenueCat](https://img.shields.io/badge/RevenueCat-vetly__pro-f25a5a)](docs/REVENUECAT_INTEGRATION.md)
+
 Paste an opportunity (internship, hackathon, MUN, society). Vetly scores it against *your* goals so you know if it is worth the time **before** you apply. Reverse discovery — not another feed of listings.
 
-Built for students. **Shipaton 2026 Next Gen.** Solo project by a 16-year-old.
+Built for students. **Shipaton 2026 Next Gen.** Solo project by a 16-year-old. The app exists today (not a 9-day sprint plan).
 
 **Demo video:** you must record and add this on Devpost yourself. This repo does not include a video — do not submit without one.
 
@@ -13,10 +17,21 @@ Built for students. **Shipaton 2026 Next Gen.** Solo project by a 16-year-old.
 | | URL |
 |---|---|
 | Web demo | https://vetly-f99d6523.netlify.app |
-| Android APK (standalone, not a development client) | https://expo.dev/artifacts/eas/13J2iyD6VXc5LpyVcoyq9b5JS5C6SFWd7MLQ8SirqT0.apk |
+| Android APK (preview / standalone, not Expo Go) | https://expo.dev/artifacts/eas/NQu90Y-zCVdr2idRWAEGym0J-yd6AMeIWSfL_4MR8Dg.apk |
 | GitHub | https://github.com/Hassan-jamshaid-dev/Vetly |
 
-Screenshots (1179×2556, no device frame): `assets/screenshots/home.png`, `evaluate.png`, `results.png`, `paywall.png`.
+Docs: [Architecture](docs/ARCHITECTURE.md) · [RevenueCat](docs/REVENUECAT_INTEGRATION.md)
+
+### Screenshots
+
+Product shots from `assets/screenshots/` (1179×2556, no device frame). Paywall prices in the **app** are **$10.99 / month** and **$80.99 / year**.
+
+<p>
+  <img src="assets/screenshots/home.png" alt="Home — evaluate opportunity, locked recent evaluations" width="220" />
+  <img src="assets/screenshots/evaluate.png" alt="Evaluate — paste an opportunity and Analyze" width="220" />
+  <img src="assets/screenshots/results.png" alt="Results — match score and key insights" width="220" />
+  <img src="assets/screenshots/paywall.png" alt="Paywall — Unlock Premium" width="220" />
+</p>
 
 ---
 
@@ -30,8 +45,9 @@ Screenshots (1179×2556, no device frame): `assets/screenshots/home.png`, `evalu
 6. [Folder map](#folder-map)
 7. [Setup](#setup)
 8. [RevenueCat dashboard](#revenuecat-dashboard)
-9. [Submission notes](#submission-notes)
-10. [License](#license)
+9. [CI](#ci)
+10. [Submission notes](#submission-notes)
+11. [License](#license)
 
 ---
 
@@ -41,7 +57,7 @@ Discovery apps keep showing more listings. Students already find internships, ha
 
 The core loop is short:
 
-1. Write who you are and what you want (at least 20 words).
+1. Write who you are and what you want (300–1000 characters on free).
 2. Paste a link, description, or screenshot of something you are considering.
 3. Read a 1–10 match score, insights, and (on Premium) preparation guidance.
 4. Decide whether to spend the weekend — or skip it.
@@ -52,7 +68,7 @@ The core loop is short:
 |---|---|---|
 | Login | Not required | Not required. Sign-in is a **demo identity**, not a paywall. |
 | Evaluations | 3 per local calendar day | Unlimited |
-| Goal length | Minimum 20 words, maximum **500 characters** | Minimum 20 words, maximum **2000 words** |
+| Goal length | Minimum **300 characters**, maximum **1000 characters** | Minimum 20 words, maximum **2000 words** |
 | Results | Title, source, score, label, key insights | Same, plus unlocked guidance |
 | Form-fill help | Not available | Opens only when the opportunity looks like an **application / form** |
 | History tab | Locked teaser → paywall | On-device list (newest first, capped at 50) plus a pattern card |
@@ -67,12 +83,12 @@ Evaluations in this build are an **on-device mock**. Claude is not live. `EXPO_P
 
 ## For judges
 
-**Skip signup.** There is no production auth and no judge password.
+**Skip signup.** There is no production auth and no judge password. Next Gen does **not** require an App Store / Play listing — Test Store on the preview APK is enough for Subscribe.
 
 ### Guest path (recommended)
 
 1. Open the app. After splash, tap **Get Started**. Do not tap demo sign-in / Google / Apple.
-2. Write a goal (≥20 words) or paste the on-screen Grade 11 / Waterloo / MIT example → **Continue**.
+2. Write a goal (300–1000 characters) or paste the on-screen Grade 11 / Waterloo / MIT example → **Continue**.
 3. Home → **Evaluate Opportunity**. Paste an opportunity *or* tap an example card (Hack Club, MUN, Youth Climate Summit) → **Analyze**.
 4. Read the score vs your goal. That is the product: know before you go.
 
@@ -89,7 +105,7 @@ Email / Google / Apple on **Sign up** are **simulated** (labeled demo in the UI)
 | Reverse discovery (free) | **Web**, **Expo Go**, or the standalone APK. No account. |
 | Subscribe / `vetly_pro` | **Standalone or development APK** (native IAP). Expo Go and web cannot load store purchases. |
 
-**Standalone Android APK (judges):** https://expo.dev/artifacts/eas/13J2iyD6VXc5LpyVcoyq9b5JS5C6SFWd7MLQ8SirqT0.apk
+**Standalone Android APK (judges):** https://expo.dev/artifacts/eas/NQu90Y-zCVdr2idRWAEGym0J-yd6AMeIWSfL_4MR8Dg.apk
 
 **Web:** https://vetly-f99d6523.netlify.app (guest reverse discovery; no IAP). If that URL asks for a Netlify login, set **Project configuration → General → Visitor access → Project visibility → Public**.
 
@@ -129,7 +145,7 @@ The user describes who they are and what they are aiming for. Every later evalua
 - First run: **Continue** saves the goal and resets the stack to Home (back cannot return to splash / onboarding).
 - From Settings: `/goal?mode=edit` → **Save** returns to Settings.
 
-Free: 20+ words, 500-character cap. Premium: 20+ words, 2000-word cap.
+Free: 300–1000 characters (no 20-word check). Premium: 20+ words, 2000-word cap (not a 1000-character cap).
 
 ### Sign up (`/signup`) — not Premium
 
@@ -180,7 +196,7 @@ Deep-linking into form-help without Premium redirects to the paywall. Non-applic
 
 ### Paywall (`/paywall`)
 
-Plans match dashboard products: **Yearly $29.99** (best value) and **Monthly $4.99**.
+Plans match dashboard products: **Yearly $80.99** (best value, ≈ $6.75/mo) and **Monthly $10.99**.
 
 On a development / store build with a public SDK key:
 
@@ -219,14 +235,32 @@ Edit goal, optional **Add resume**, About / Privacy / Terms (`/legal?page=…`),
 
 ## How the code works (architecture)
 
+Longer write-up: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Billing details: [docs/REVENUECAT_INTEGRATION.md](docs/REVENUECAT_INTEGRATION.md).
+
 ```
 app/                         Expo Router screens
 src/services/evaluation.ts   Mock “brain” (evaluateOpportunity)
-src/services/purchases.ts    RevenueCat SDK + UI
+src/services/purchases.ts    RevenueCat SDK + UI (do not replace with a second billing class)
 src/services/evaluationCloud.ts  Optional Supabase upsert / fetch
 src/storage/*                AsyncStorage (and SecureStore for demo session)
 src/lib/supabase.ts          Anon client + anonymous sign-in
 src/config/demo.ts           First-run / recording switch
+```
+
+```mermaid
+flowchart LR
+  UI["Expo Router UI\napp/"]
+  Purchases["purchases.ts"]
+  SDK["RevenueCat SDK"]
+  Store["Test Store / CustomerInfo"]
+  Ent["vetly_pro"]
+  Premium["Premium UI"]
+
+  UI --> Purchases
+  Purchases --> SDK
+  SDK --> Store
+  Store --> Ent
+  Ent --> Premium
 ```
 
 TypeScript path alias: `@/` → `src/` (`tsconfig.json`).
@@ -265,6 +299,8 @@ Local History (`vetly:history`) is **Premium-only**. Free Analyze still may upse
 
 `src/services/evaluation.ts` is the seam. Keep `evaluateOpportunity()`’s signature; only the body should change when a **server-side** model is wired. The file has a TODO for Claude; **the body never reads the env key today**. Filling `EXPO_PUBLIC_CLAUDE_API_KEY` does nothing and would leak the key in the bundle.
 
+**Claude context (honest).** Analyze already calls `evaluateOpportunity({ text, imageUri }, goal, profile)`. Today that means opportunity paste (plus a local screenshot URI if uploaded), the saved goal, and the premium profile object when one exists (grade, universities, career, activities, situation, resume filename/URI). The mock only keyword-scans the goal (focus / school / startup) and uses profile fields in form-help when the paste looks like an application. History is **not** in this call (History-tab `coherence.ts` only). Resume **bytes** are never read. When Claude is wired later it should receive opportunity text + goal + those premium onboarding fields so the eval is personalized; history/resume only if already on that payload or as a small safe add. Mock stays until a **server-side** key exists — never `EXPO_PUBLIC_` for secrets.
+
 Behavior:
 
 1. Curated results for the three Evaluate examples (Hack Club **9**, MUN **7**, Climate Summit **4**), with copy that references goal hints (focus, school, startup).
@@ -278,7 +314,7 @@ Behavior:
 | Constant | Value |
 |---|---|
 | Entitlement | `vetly_pro` |
-| Products | `vetly_pro_monthly` ($4.99), `vetly_pro_yearly` ($29.99) |
+| Products | `vetly_pro_monthly` ($10.99), `vetly_pro_yearly` ($80.99) |
 | Packages | `$rc_monthly`, `$rc_annual` |
 
 `src/storage/premiumStorage.ts` is a **cache** (`vetly:isPremium`). Native builds treat RevenueCat as source of truth: `setPremiumFromCustomerInfo` writes `true` **only** when `entitlements.active.vetly_pro` exists. A failed refresh does not invent Premium. Expo Go does not overwrite a labeled demo unlock with a missing entitlement.
@@ -370,12 +406,14 @@ Vetly/
 │   ├── components/               Buttons, cards, score ring, locked card, tab icons, decor
 │   └── utils/                    dialog, relativeTime
 ├── supabase/setup.sql            evaluations table + RLS
+├── docs/                         ARCHITECTURE.md, REVENUECAT_INTEGRATION.md
+├── .github/                      CI workflow + issue templates
 ├── assets/images/                App icon, paywall hero
 ├── assets/screenshots/           1179×2556 PNGs (home, evaluate, results, paywall)
 ├── app.json                      Name, scheme vetly, bundle id, EAS projectId
 ├── eas.json                      development / preview / production profiles
 ├── .env.example                  Placeholder env names only
-└── package.json                  Scripts: start, run:android, eas:dev
+└── package.json                  Scripts: start, typecheck, ci, run:android, eas:dev
 ```
 
 ---
@@ -385,12 +423,12 @@ Vetly/
 ```bash
 git clone https://github.com/Hassan-jamshaid-dev/Vetly.git
 cd Vetly
-npm install
 cp .env.example .env
+npm ci
 npx expo start
 ```
 
-Copy `.env.example` → `.env`. Empty placeholders only. Never put `service_role`, a database password, or a RevenueCat **secret** REST key in the app. Restart Metro after changing `.env`. Different networks: `npx expo start --tunnel`.
+Copy `.env.example` → `.env`. Empty placeholders only. For sandbox IAP, put the RevenueCat **Test Store public** SDK key in `EXPO_PUBLIC_REVENUECAT_API_KEY` (never the secret REST key). Restart Metro after changing `.env`. Different networks: `npx expo start --tunnel`.
 
 | Variable | What it is |
 |---|---|
@@ -401,7 +439,8 @@ Copy `.env.example` → `.env`. Empty placeholders only. Never put `service_role
 | `REVENUECAT_SECRET` | Optional, **local catalog scripts only**. Never `EXPO_PUBLIC_`. Never commit a real value. |
 
 - **Expo Go** (`npx expo start`): JS app, guest reverse discovery. No IAP.
-- **IAP:** a binary that includes native purchases, then `npx expo start --dev-client`.
+- **Preview APK:** https://expo.dev/artifacts/eas/NQu90Y-zCVdr2idRWAEGym0J-yd6AMeIWSfL_4MR8Dg.apk — native IAP / Test Store. Not Expo Go.
+- **IAP locally:** a binary that includes native purchases, then `npx expo start --dev-client`.
 
 ```bash
 npx expo run:android
@@ -426,8 +465,10 @@ Sandbox now; App Store / Play later. Do not ship a Test Store public key to prod
 
 | Product id | Price (copy in the app) |
 |---|---|
-| `vetly_pro_monthly` | $4.99 / month |
-| `vetly_pro_yearly` | $29.99 / year |
+| `vetly_pro_monthly` | $10.99 / month |
+| `vetly_pro_yearly` | $80.99 / year (≈ $6.75/mo) |
+
+Update Test Store product prices in the RevenueCat dashboard to match, or the sandbox modal shows old amounts.
 
 **RevenueCat Project ID:** not stored in this repo. Copy the `proj…` value from the RevenueCat dashboard (Project settings) if Devpost asks for it.
 
@@ -441,7 +482,17 @@ Sandbox now; App Store / Play later. Do not ship a Test Store public key to prod
 
 Expo Go shows **Install a development build**. The `__DEV__` “Unlock demo (not billed)” control is local-only and is **not** the Shipaton purchase.
 
-**Go live later:** keep bundle id `com.vetly.app`. Create the same product ids on App Store Connect and Google Play, attach them to the same `vetly_pro` entitlement, then swap `.env` to Apple / Google **public** SDK keys (still never the secret REST key).
+**Go live later:** keep bundle id `com.vetly.app`. Create the same product ids on App Store Connect and Google Play, attach them to the same `vetly_pro` entitlement, then swap `.env` to Apple / Google **public** SDK keys (still never the secret REST key). **Shipaton 2026 Next Gen does not require a store listing.**
+
+---
+
+## CI
+
+`.github/workflows/ci.yml` runs on push and pull request: checkout, Node 20, `npm ci`, `npm run typecheck` (`tsc --noEmit`). There is no `npm run build` in this app. ESLint is not configured, so `expo lint` is not in CI. `npm audit --audit-level=high` is `continue-on-error` because React Native trees often fail audit.
+
+A GitHub Actions badge is omitted on purpose until this workflow is on GitHub (the badge URL would 404). After you push, you can add:
+
+`https://github.com/Hassan-jamshaid-dev/Vetly/actions/workflows/ci.yml/badge.svg`
 
 ---
 
@@ -465,7 +516,7 @@ Claude for live evaluations (**server-side** key, never `EXPO_PUBLIC_`). Same `v
 
 - **GitHub:** https://github.com/Hassan-jamshaid-dev/Vetly
 - **Website / web demo:** https://vetly-f99d6523.netlify.app
-- **Android APK:** https://expo.dev/artifacts/eas/13J2iyD6VXc5LpyVcoyq9b5JS5C6SFWd7MLQ8SirqT0.apk
+- **Android APK:** https://expo.dev/artifacts/eas/NQu90Y-zCVdr2idRWAEGym0J-yd6AMeIWSfL_4MR8Dg.apk
 - **Screenshots:** `assets/screenshots/` (home, evaluate, results, paywall — 1179×2556, no device frame)
 - **Video:** paste your Devpost video URL here after you upload it. **You must add the video on Devpost; this project does not include one.**
 - **Claude:** on-device mock. Not live.

@@ -12,6 +12,7 @@
       "bundleIdentifier": "com.vetly.app"
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.vetly.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",

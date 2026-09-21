@@ -25,7 +25,7 @@ import { colors } from '@/theme/colors';
 import { fonts } from '@/theme/typography';
 import { showAlert } from '@/utils/dialog';
 
-// Copy and prices match RevenueCat products: $4.99/mo and $29.99/yr.
+// Copy and prices match RevenueCat products: $10.99/mo and $80.99/yr.
 const FEATURES = [
   'Unlimited evaluations',
   'Save every past evaluation',
@@ -231,22 +231,22 @@ export default function PaywallScreen() {
       : useDashboardPaywallPrimary
         ? 'Subscribe with RevenueCat'
         : plan === 'yearly'
-          ? 'Subscribe · $29.99/year'
-          : 'Subscribe · $4.99/month';
+          ? 'Subscribe · $80.99/year'
+          : 'Subscribe · $10.99/month';
 
   return (
     <LinearGradient
       colors={[colors.paywallTop, colors.paywallBottom]}
-      start={{ x: 0.2, y: 0 }}
-      end={{ x: 0.8, y: 1 }}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
       style={styles.screen}
     >
       <StatusBar style="light" />
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + 8,
-          paddingBottom: insets.bottom + 24,
-          paddingHorizontal: 24,
+          paddingTop: insets.top + 4,
+          paddingBottom: insets.bottom + 28,
+          paddingHorizontal: 28,
           flexGrow: 1,
         }}
         showsVerticalScrollIndicator={false}
@@ -258,7 +258,7 @@ export default function PaywallScreen() {
           accessibilityLabel="Close"
           style={({ pressed }) => [styles.close, pressed && styles.pressed]}
         >
-          <Ionicons name="close" size={26} color={colors.white} />
+          <Ionicons name="close" size={22} color={colors.white} />
         </Pressable>
 
         <Image
@@ -268,34 +268,56 @@ export default function PaywallScreen() {
           accessibilityIgnoresInvertColors
         />
 
-        <Text style={styles.heading}>Unlock Premium</Text>
-        <Text style={styles.kicker}>Know before you go — without a daily cap.</Text>
+        <Text style={styles.eyebrow}>Premium</Text>
+        <Text style={styles.heading}>Know before you go.</Text>
+        <Text style={styles.kicker}>Without a daily cap — evaluated against your goals.</Text>
 
         <View style={styles.features}>
-          {FEATURES.map((feature) => (
-            <View key={feature} style={styles.featureRow}>
-              <Ionicons name="checkmark-circle" size={20} color={colors.white} />
+          {FEATURES.map((feature, index) => (
+            <View key={feature} style={[styles.featureRow, index > 0 && styles.featureRule]}>
+              <Ionicons name="checkmark" size={15} color={colors.paywallMuted} />
               <Text style={styles.featureText}>{feature}</Text>
             </View>
           ))}
         </View>
 
-        <View style={styles.plans}>
-          <PlanCard
-            title="Yearly"
-            price="$29.99"
-            period="per year · $2.50/mo"
-            badge="Best value"
-            selected={plan === 'yearly'}
+        <View style={styles.offers}>
+          <Pressable
             onPress={() => setPlan('yearly')}
-          />
-          <PlanCard
-            title="Monthly"
-            price="$4.99"
-            period="per month"
-            selected={plan === 'monthly'}
+            accessibilityRole="button"
+            accessibilityLabel="Yearly, $80.99 per year"
+            accessibilityState={{ selected: plan === 'yearly' }}
+            style={({ pressed }) => [
+              styles.heroOffer,
+              plan === 'yearly' && styles.heroOfferSelected,
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.heroOfferTop}>
+              <Text style={styles.heroOfferLabel}>Yearly</Text>
+              <View style={[styles.radio, plan === 'yearly' && styles.radioOn]} />
+            </View>
+            <Text style={styles.heroPrice}>$80.99</Text>
+            <Text style={styles.heroPeriod}>$6.75 per month, billed once a year</Text>
+          </Pressable>
+
+          <Pressable
             onPress={() => setPlan('monthly')}
-          />
+            accessibilityRole="button"
+            accessibilityLabel="Monthly, $10.99 per month"
+            accessibilityState={{ selected: plan === 'monthly' }}
+            style={({ pressed }) => [
+              styles.altOffer,
+              plan === 'monthly' && styles.altOfferSelected,
+              pressed && styles.pressed,
+            ]}
+          >
+            <View>
+              <Text style={styles.altTitle}>Monthly</Text>
+              <Text style={styles.altPeriod}>Billed each month</Text>
+            </View>
+            <Text style={styles.altPrice}>$10.99</Text>
+          </Pressable>
         </View>
 
         <View style={styles.cta}>
@@ -365,147 +387,174 @@ export default function PaywallScreen() {
   );
 }
 
-function PlanCard({
-  title,
-  price,
-  period,
-  badge,
-  selected,
-  onPress,
-}: {
-  title: string;
-  price: string;
-  period: string;
-  badge?: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      style={[styles.plan, selected && styles.planSelected]}
-    >
-      {badge ? (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{badge}</Text>
-        </View>
-      ) : null}
-      <Text style={styles.planTitle}>{title}</Text>
-      <Text style={styles.planPrice}>{price}</Text>
-      <Text style={styles.planPeriod}>{period}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
   close: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-end',
+    backgroundColor: colors.whiteAlpha18,
   },
   pressed: {
-    opacity: 0.6,
+    opacity: 0.72,
   },
   heroImage: {
     width: '100%',
-    height: 160,
-    borderRadius: 16,
-    marginTop: 8,
+    height: 128,
+    borderRadius: 20,
+    borderCurve: 'continuous',
+    marginTop: 20,
     backgroundColor: colors.paywallCard,
   },
+  eyebrow: {
+    marginTop: 28,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    letterSpacing: 1.2,
+    color: colors.paywallMuted,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
   heading: {
-    marginTop: 20,
+    marginTop: 8,
     fontFamily: fonts.bold,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 32,
+    lineHeight: 38,
+    letterSpacing: -0.6,
     color: colors.white,
     textAlign: 'center',
   },
   kicker: {
-    marginTop: 8,
+    marginTop: 10,
     fontFamily: fonts.regular,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 24,
     color: colors.paywallMuted,
     textAlign: 'center',
   },
   features: {
-    marginTop: 22,
-    gap: 14,
+    marginTop: 32,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+    paddingVertical: 12,
+  },
+  featureRule: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.paywallLine,
   },
   featureText: {
     flex: 1,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.regular,
     fontSize: 15,
+    lineHeight: 22,
     color: colors.white,
   },
-  plans: {
+  offers: {
     marginTop: 28,
-    flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
-  plan: {
-    flex: 1,
-    borderRadius: 18,
+  heroOffer: {
+    borderRadius: 22,
     borderCurve: 'continuous',
     paddingVertical: 22,
-    paddingHorizontal: 12,
+    paddingHorizontal: 22,
     backgroundColor: colors.paywallCard,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.paywallLine,
-    alignItems: 'center',
-    minHeight: 118,
   },
-  planSelected: {
+  heroOfferSelected: {
     backgroundColor: colors.paywallCardSelected,
     borderColor: colors.white,
+    borderWidth: 1,
   },
-  badge: {
-    position: 'absolute',
-    top: -10,
-    backgroundColor: colors.purple,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+  heroOfferTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  badgeText: {
-    fontFamily: fonts.semibold,
-    fontSize: 11,
-    color: colors.white,
-  },
-  planTitle: {
+  heroOfferLabel: {
     fontFamily: fonts.medium,
     fontSize: 14,
+    lineHeight: 20,
     color: colors.paywallMuted,
   },
-  planPrice: {
-    marginTop: 6,
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: colors.paywallMuted,
+  },
+  radioOn: {
+    borderColor: colors.white,
+    borderWidth: 5,
+  },
+  heroPrice: {
+    marginTop: 10,
     fontFamily: fonts.bold,
-    fontSize: 24,
+    fontSize: 34,
+    lineHeight: 40,
+    letterSpacing: -0.8,
+    color: colors.white,
+    fontVariant: ['tabular-nums'],
+  },
+  heroPeriod: {
+    marginTop: 6,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.paywallMuted,
+  },
+  altOffer: {
+    minHeight: 64,
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: colors.paywallCard,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.paywallLine,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  altOfferSelected: {
+    backgroundColor: colors.paywallCardSelected,
+    borderColor: colors.white,
+    borderWidth: 1,
+  },
+  altTitle: {
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    lineHeight: 20,
     color: colors.white,
   },
-  planPeriod: {
+  altPeriod: {
     marginTop: 2,
     fontFamily: fonts.regular,
     fontSize: 13,
+    lineHeight: 18,
     color: colors.paywallMuted,
-    textAlign: 'center',
+  },
+  altPrice: {
+    fontFamily: fonts.semibold,
+    fontSize: 18,
+    lineHeight: 24,
+    color: colors.white,
+    fontVariant: ['tabular-nums'],
   },
   cta: {
     marginTop: 'auto',
-    paddingTop: 28,
+    paddingTop: 32,
   },
   demoNote: {
     marginTop: 14,
@@ -516,18 +565,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   later: {
-    marginTop: 16,
+    marginTop: 8,
     alignItems: 'center',
     minHeight: 44,
     justifyContent: 'center',
   },
   laterText: {
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: 14,
     color: colors.paywallMuted,
   },
   demoUnlock: {
-    marginTop: 4,
+    marginTop: 0,
     alignItems: 'center',
     minHeight: 36,
     justifyContent: 'center',
@@ -539,7 +588,7 @@ const styles = StyleSheet.create({
     color: colors.paywallMuted,
   },
   legalRow: {
-    marginTop: 16,
+    marginTop: 8,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

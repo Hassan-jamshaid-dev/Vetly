@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePathname, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Animated, Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SplashDecor } from '@/components/decor/SplashDecor';
@@ -9,11 +9,12 @@ import { VMark } from '@/components/VMark';
 import { DEMO_FORCE_FIRST_RUN } from '@/config/demo';
 import { getGoal } from '@/storage/goalStorage';
 import { colors } from '@/theme/colors';
+import { motion } from '@/theme/motion';
 import { fonts } from '@/theme/typography';
 
 const MIN_SPLASH_MS = 900;
-const ENTRANCE_MS = 420;
-const FADE_OUT_MS = 220;
+const ENTRANCE_MS = motion.base;
+const FADE_OUT_MS = motion.base;
 
 const BAR_WIDTH = 140;
 const BAR_HEIGHT = 4;
@@ -31,25 +32,19 @@ export default function SplashScreen() {
 
   // Whole-screen opacity, animated 1 -> 0 right before we leave.
   const screenOpacity = useRef(new Animated.Value(1)).current;
-  // Brand block entrance: fade in while rising 12px.
+  // Brand block entrance: opacity only (no rise, no spring).
   const brandOpacity = useRef(new Animated.Value(0)).current;
-  const brandRise = useRef(new Animated.Value(12)).current;
   // Progress fill slides in from the left over the full splash duration.
   const progress = useRef(new Animated.Value(-BAR_WIDTH)).current;
 
   useEffect(() => {
     let cancelled = false;
 
-    const nativeDriver = Platform.OS !== 'web';
+    const nativeDriver = process.env.EXPO_OS !== 'web';
 
     Animated.parallel([
       Animated.timing(brandOpacity, {
         toValue: 1,
-        duration: ENTRANCE_MS,
-        useNativeDriver: nativeDriver,
-      }),
-      Animated.timing(brandRise, {
-        toValue: 0,
         duration: ENTRANCE_MS,
         useNativeDriver: nativeDriver,
       }),
@@ -100,16 +95,14 @@ export default function SplashScreen() {
     return () => {
       cancelled = true;
     };
-  }, [brandOpacity, brandRise, progress, router, screenOpacity]);
+  }, [brandOpacity, progress, router, screenOpacity]);
 
   return (
     <Animated.View style={[styles.screen, { opacity: screenOpacity }]}>
       <SplashDecor width={width} height={height} />
 
-      <Animated.View
-        style={[styles.brand, { opacity: brandOpacity, transform: [{ translateY: brandRise }] }]}
-      >
-        <VMark size={150} />
+      <Animated.View style={[styles.brand, { opacity: brandOpacity }]}>
+        <VMark size={128} />
         <Text style={styles.wordmark} maxFontSizeMultiplier={1.2}>
           Vetly
         </Text>
@@ -145,12 +138,12 @@ const styles = StyleSheet.create({
   wordmark: {
     // The mark's SVG box has ~13% of empty space below the glyph, so a small
     // margin here yields a visual gap of roughly 22-30px.
-    marginTop: 6,
+    marginTop: 4,
     color: colors.textPrimary,
     fontFamily: fonts.bold,
-    fontSize: 36,
-    lineHeight: 44,
-    letterSpacing: 0.5,
+    fontSize: 34,
+    lineHeight: 42,
+    letterSpacing: 0.2,
   },
   tagline: {
     marginTop: 8,

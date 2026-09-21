@@ -1,9 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text } from 'react-native';
 
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { LEGAL_PAGES, type LegalPageId } from '@/content/legal';
 import { firstQueryParam } from '@/navigation/queryParam';
 import { colors } from '@/theme/colors';
@@ -16,42 +14,26 @@ function isLegalPageId(value: string | undefined): value is LegalPageId {
 // About, Privacy, and Terms share one screen. Open with /legal?page=about.
 export default function LegalScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { page } = useLocalSearchParams<{ page?: string | string[] }>();
   const pageId = firstQueryParam(page);
   const id: LegalPageId = isLegalPageId(pageId) ? pageId : 'about';
   const content = LEGAL_PAGES[id];
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="dark" />
-      <ScreenHeader
-        onBack={() => {
-          if (router.canGoBack()) router.back();
-          else router.replace('/settings');
-        }}
-        title={content.title}
-        withSafeArea
-      />
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 32 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.text}>{content.body}</Text>
-      </ScrollView>
-    </View>
+    <ScreenWrapper
+      title={content.title}
+      onBack={() => {
+        if (router.canGoBack()) router.back();
+        else router.replace('/settings');
+      }}
+      contentContainerStyle={styles.body}
+    >
+      <Text style={styles.text}>{content.body}</Text>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSoft,
-  },
-  flex: {
-    flex: 1,
-  },
   body: {
     paddingHorizontal: 24,
     paddingTop: 8,

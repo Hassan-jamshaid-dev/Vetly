@@ -28,7 +28,8 @@ export default function OnboardingScreen() {
   const { width, height } = useWindowDimensions();
 
   const bottomPadding = Math.max(24, insets.bottom + 12);
-  const reserved = TEXT_BLOCK_HEIGHT + MIN_TEXT_TO_CTA_GAP + CTA_GROUP_HEIGHT + bottomPadding;
+  const topPadding = insets.top;
+  const reserved = TEXT_BLOCK_HEIGHT + MIN_TEXT_TO_CTA_GAP + CTA_GROUP_HEIGHT + bottomPadding + topPadding;
   // Hero is ~56% of the screen on phones with room to spare; smaller ones shrink it.
   const heroHeight = Math.max(MARK_SIZE, Math.min(height * 0.56, height - reserved));
   // Mark sits ~32% down the screen (57% of the hero) and scales with the hero.
@@ -36,7 +37,13 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.screen}>
-      <OnboardingDecor width={width} heroHeight={heroHeight} markCenterY={markCenterY} />
+      <OnboardingDecor
+        width={width}
+        heroHeight={heroHeight + topPadding}
+        markCenterY={markCenterY + topPadding}
+      />
+
+      <View style={{ height: topPadding }} />
 
       {/* Hero: the mark, centred on the orbit. */}
       <View style={{ height: heroHeight }}>

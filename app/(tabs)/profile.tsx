@@ -19,7 +19,7 @@ import {
 import { colors } from '@/theme/colors';
 import { fonts } from '@/theme/typography';
 
-const TAB_BAR_SPACER = 64 + 16;
+const TAB_BAR_SPACER = 24;
 const GOAL_PREVIEW = 120;
 
 function activityLines(raw: string): string[] {
@@ -87,15 +87,16 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Profile</Text>
+          <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+            Profile
+          </Text>
           <Pressable
             onPress={() => router.push('/settings')}
-            hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel="Settings"
-            style={({ pressed }) => pressed && styles.pressed}
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
           >
-            <Ionicons name="settings-outline" size={24} color={colors.textPrimary} />
+            <Ionicons name="settings-outline" size={22} color={colors.textPrimary} />
           </Pressable>
         </View>
 
@@ -154,7 +155,7 @@ function FullProfile({
   const resumeName = profile?.resumeName?.trim() || null;
 
   return (
-    <View>
+    <View style={styles.stack}>
       <View style={styles.hero}>
         <View style={styles.avatar}>
           <Text style={styles.avatarLetter}>{initial}</Text>
@@ -164,10 +165,10 @@ function FullProfile({
         <Pressable
           onPress={onEdit}
           accessibilityRole="button"
+          accessibilityLabel="Edit profile"
           style={({ pressed }) => [styles.editPill, pressed && styles.pressed]}
         >
-          <Ionicons name="create-outline" size={16} color={colors.purple} />
-          <Text style={styles.editPillLabel}>Edit Profile</Text>
+          <Text style={styles.editPillLabel}>Edit profile</Text>
         </Pressable>
       </View>
 
@@ -204,9 +205,14 @@ function FullProfile({
       ) : null}
 
       {resumeName ? (
-        <Pressable onPress={onResume} accessibilityRole="button" style={styles.block}>
+        <Pressable
+          onPress={onResume}
+          accessibilityRole="button"
+          accessibilityLabel={`Resume, ${resumeName}`}
+          style={styles.block}
+        >
           {({ pressed }) => (
-            <Card radius={16} style={pressed ? styles.pressed : undefined}>
+            <Card radius={16} style={pressed ? styles.rowPressed : undefined}>
               <View style={styles.resumeRow}>
                 <View style={styles.resumeIcon}>
                   <Ionicons name="document-text-outline" size={20} color={colors.purple} />
@@ -226,14 +232,14 @@ function FullProfile({
         <Card radius={16} style={styles.block}>
           <Text style={styles.cardLabel}>Resume</Text>
           <Text style={styles.goalText}>
-          You skipped this during setup. Add a PDF or image anytime.
+            You skipped this during setup. Add a PDF or image anytime.
           </Text>
           <Pressable
             onPress={onResume}
             accessibilityRole="button"
+            accessibilityLabel="Add resume"
             style={({ pressed }) => [styles.addResumeBtn, pressed && styles.pressed]}
           >
-            <Ionicons name="cloud-upload-outline" size={16} color={colors.purple} />
             <Text style={styles.addResumeLabel}>Add resume</Text>
           </Pressable>
         </Card>
@@ -254,7 +260,7 @@ function GuestProfile({
   const preview = previewGoal(goal);
 
   return (
-    <View>
+    <View style={styles.stack}>
       <Card radius={16} style={styles.block}>
         <Text style={styles.cardLabel}>Your goal</Text>
         <Text style={styles.goalText}>
@@ -285,26 +291,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerRow: {
-    height: 40,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
   },
   title: {
+    flex: 1,
     fontFamily: fonts.bold,
     fontSize: 28,
     lineHeight: 36,
     color: colors.textPrimary,
   },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   loading: {
     marginTop: 20,
     gap: 12,
   },
+  stack: {
+    gap: 16,
+  },
   pressed: {
     opacity: 0.6,
   },
+  rowPressed: {
+    backgroundColor: colors.backgroundSoft,
+  },
   hero: {
-    marginTop: 20,
+    marginTop: 8,
     alignItems: 'center',
   },
   avatar: {
@@ -321,27 +341,30 @@ const styles = StyleSheet.create({
     color: colors.purple,
   },
   name: {
-    marginTop: 14,
+    marginTop: 12,
     fontFamily: fonts.bold,
     fontSize: 22,
+    lineHeight: 28,
     color: colors.textPrimary,
+    textAlign: 'center',
   },
   subtitle: {
     marginTop: 4,
     fontFamily: fonts.regular,
     fontSize: 15,
+    lineHeight: 20,
     color: colors.textSecondary,
   },
   editPill: {
     marginTop: 14,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.purpleBorder,
-    paddingHorizontal: 16,
+    minHeight: 44,
+    borderRadius: 22,
+    borderCurve: 'continuous',
+    backgroundColor: colors.purpleTint,
+    paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
   editPillLabel: {
     fontFamily: fonts.medium,
@@ -349,14 +372,14 @@ const styles = StyleSheet.create({
     color: colors.purple,
   },
   chips: {
-    marginTop: 20,
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 8,
   },
   chip: {
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: colors.purpleTint,
   },
@@ -366,27 +389,26 @@ const styles = StyleSheet.create({
     color: colors.purple,
   },
   block: {
-    marginTop: 16,
+    marginTop: 0,
   },
   cardLabel: {
-    fontFamily: fonts.semibold,
+    fontFamily: fonts.medium,
     fontSize: 13,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    lineHeight: 18,
     color: colors.textSecondary,
   },
   goalText: {
-    marginTop: 8,
+    marginTop: 6,
     fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,
     color: colors.textPrimary,
   },
   activityRow: {
-    marginTop: 12,
+    marginTop: 10,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingBottom: 12,
+    paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.hairline,
   },
@@ -395,11 +417,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   activityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: colors.purple,
-    marginTop: 7,
+    opacity: 0.45,
+    marginTop: 8,
     marginRight: 12,
   },
   activityText: {
@@ -412,11 +435,13 @@ const styles = StyleSheet.create({
   resumeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 44,
   },
   resumeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderCurve: 'continuous',
     backgroundColor: colors.purpleTint,
     alignItems: 'center',
     justifyContent: 'center',
@@ -438,29 +463,30 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   addResumeBtn: {
-    marginTop: 14,
+    marginTop: 12,
     alignSelf: 'flex-start',
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.purpleBorder,
+    minHeight: 44,
+    borderRadius: 22,
+    borderCurve: 'continuous',
+    backgroundColor: colors.purpleTint,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
   addResumeLabel: {
-    fontFamily: fonts.semibold,
+    fontFamily: fonts.medium,
     fontSize: 14,
     color: colors.purple,
   },
   guestActions: {
-    marginTop: 24,
+    gap: 4,
   },
   login: {
-    marginTop: 16,
+    marginTop: 8,
     alignItems: 'center',
-    paddingVertical: 8,
+    justifyContent: 'center',
+    minHeight: 44,
   },
   loginLabel: {
     fontFamily: fonts.semibold,

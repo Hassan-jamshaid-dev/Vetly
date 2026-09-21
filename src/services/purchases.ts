@@ -6,7 +6,7 @@ import { setIsPremium } from '@/storage/premiumStorage';
 /** Dashboard entitlement. Must match RevenueCat exactly. */
 export const PREMIUM_ENTITLEMENT_ID = 'vetly_pro';
 
-/** Store / RevenueCat product ids. Prices: $4.99/mo and $29.99/yr. */
+/** Store / RevenueCat product ids. Prices: $10.99/mo and $80.99/yr. */
 export const MONTHLY_PRODUCT_ID = 'vetly_pro_monthly';
 export const YEARLY_PRODUCT_ID = 'vetly_pro_yearly';
 
@@ -333,7 +333,7 @@ function nativePurchaseBlocker(): Extract<PurchaseResult, 'no_sdk' | 'no_key' | 
 }
 
 /**
- * Buy the selected Monthly ($4.99) or Yearly ($29.99) package via
+ * Buy the selected Monthly ($10.99) or Yearly ($80.99) package via
  * `Purchases.purchasePackage`. With a Test Store API key, RevenueCat shows a
  * sandbox modal (success / fail / cancel) — no real money. Returns `success`
  * only when `vetly_pro` is active on CustomerInfo afterwards.

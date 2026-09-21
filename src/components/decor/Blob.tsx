@@ -46,6 +46,7 @@ export function Blob({
     width,
     height,
     borderRadius: radius ?? Math.max(width, height) / 2,
+    borderCurve: 'continuous' as const,
     opacity,
     transform: [{ rotate: `${rotate}deg` }],
     pointerEvents: 'none' as const,

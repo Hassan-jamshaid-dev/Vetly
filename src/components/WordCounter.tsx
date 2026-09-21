@@ -1,7 +1,7 @@
 import { StyleSheet, Text } from 'react-native';
 
 import { colors } from '@/theme/colors';
-import { fonts } from '@/theme/typography';
+import { fonts, type } from '@/theme/typography';
 
 type WordCounterProps = {
   /** Current word count. */
@@ -20,7 +20,7 @@ export function countWords(text: string): number {
 /** "n / max words" in grey, green when inside the allowed range, red when over. */
 export function WordCounter({ count, min, max }: WordCounterProps) {
   const color =
-    count > max ? colors.danger : count >= min ? colors.success : colors.textSecondary;
+    count > max ? colors.danger : count >= min ? colors.success : colors.muted;
 
   return (
     <Text style={[styles.text, { color }]}>
@@ -31,7 +31,9 @@ export function WordCounter({ count, min, max }: WordCounterProps) {
 
 const styles = StyleSheet.create({
   text: {
+    ...type.caption,
     fontFamily: fonts.medium,
-    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+    includeFontPadding: false,
   },
 });

@@ -19,9 +19,13 @@ export const colors = {
 
   // Text
   textPrimary: '#1A1D29',
+  /** textPrimary at ~30% — modal backdrops. */
+  scrim: '#1A1D294D',
   textSecondary: '#6B7280',
   /** TextInput placeholder text. */
   placeholder: '#A0A4B8',
+  /** Counters and field hints sitting below inputs. Darkened from #888888 so it meets WCAG AA on #FAFAFA. */
+  muted: '#6B7280',
 
   // Lines and fills
   /** Hairline separators: tab bar top border, InsightRow dividers, ScoreRing track. */

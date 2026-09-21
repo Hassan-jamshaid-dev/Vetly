@@ -14,9 +14,9 @@ export function SoftSkeleton({ height = 88, style }: SoftSkeletonProps) {
 
 const styles = StyleSheet.create({
   block: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderCurve: 'continuous',
     backgroundColor: colors.skeleton,
-    opacity: 0.55,
+    opacity: 0.5,
   },
 });

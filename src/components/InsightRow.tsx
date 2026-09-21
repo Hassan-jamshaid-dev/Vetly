@@ -1,8 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
-import { fonts } from '@/theme/typography';
-import type { Insight } from '@/types/evaluation';
+import { fonts, type } from '@/theme/typography';
+import type { Insight, Sentiment } from '@/types/evaluation';
 
 type InsightRowProps = {
   insight: Insight;
@@ -10,7 +10,13 @@ type InsightRowProps = {
   isLast?: boolean;
 };
 
-/** One "Key Insight": a small coloured dot and a sentence of text. */
+const SENTIMENT_TITLE: Record<Sentiment, string> = {
+  positive: 'Fits',
+  negative: 'Gap',
+  neutral: 'Note',
+};
+
+/** One insight: coloured dot, a short title, and a single supporting line. */
 export function InsightRow({ insight, isLast = false }: InsightRowProps) {
   const dotColor =
     insight.sentiment === 'positive'
@@ -22,7 +28,12 @@ export function InsightRow({ insight, isLast = false }: InsightRowProps) {
   return (
     <View style={[styles.row, !isLast && styles.separator]}>
       <View style={[styles.dot, { backgroundColor: dotColor }]} />
-      <Text style={styles.text}>{insight.text}</Text>
+      <View style={styles.copy}>
+        <Text style={styles.title}>{SENTIMENT_TITLE[insight.sentiment]}</Text>
+        <Text style={styles.body} selectable>
+          {insight.text}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -31,7 +42,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 12,
+    paddingVertical: 16,
+    gap: 12,
   },
   separator: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -41,15 +53,23 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    // Nudge so the dot sits on the first text line's centre (lineHeight 22).
-    marginTop: 7,
-    marginRight: 12,
+    marginTop: 6,
   },
-  text: {
+  copy: {
     flex: 1,
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    lineHeight: 22,
+    minWidth: 0,
+    gap: 4,
+  },
+  title: {
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+    lineHeight: 18,
+    letterSpacing: 0.2,
     color: colors.textPrimary,
+  },
+  body: {
+    ...type.bodySmall,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
   },
 });

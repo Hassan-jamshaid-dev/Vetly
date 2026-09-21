@@ -1,8 +1,7 @@
 import { StyleSheet, Text } from 'react-native';
 
 import { Card } from '@/components/Card';
-import { colors } from '@/theme/colors';
-import { fonts } from '@/theme/typography';
+import { fonts, type } from '@/theme/typography';
 
 type GuidanceCardProps = {
   guidance: string;
@@ -11,24 +10,24 @@ type GuidanceCardProps = {
 /** Unlocked Preparation Guidance on Results, shown only after simulated Premium. */
 export function GuidanceCard({ guidance }: GuidanceCardProps) {
   return (
-    <Card>
-      <Text style={styles.heading}>Preparation Guidance</Text>
-      <Text style={styles.body}>{guidance}</Text>
+    <Card padding={24}>
+      <Text style={styles.kicker}>Preparation</Text>
+      <Text style={styles.body} selectable>
+        {guidance}
+      </Text>
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  heading: {
-    fontFamily: fonts.bold,
-    fontSize: 17,
-    color: colors.textPrimary,
+  kicker: {
+    ...type.label,
+    fontFamily: fonts.semibold,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   body: {
-    marginTop: 10,
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textPrimary,
+    ...type.body,
+    marginTop: 12,
   },
 });

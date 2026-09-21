@@ -1,13 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/Card';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { getIsPremium } from '@/storage/premiumStorage';
 import { getProfile, hasResumeFile } from '@/storage/profileStorage';
 import { getCurrentEvaluation } from '@/store/evaluationStore';
@@ -34,7 +32,6 @@ function uniqueLines(groups: string[][]): string[] {
 // is an application; anything else stays on the evaluation.
 export default function ApplicationHelpScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [evaluation, setEvaluation] = useState<Evaluation | null>(() => getCurrentEvaluation());
   const [missingResume, setMissingResume] = useState(false);
 
@@ -81,21 +78,14 @@ export default function ApplicationHelpScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="dark" />
-      <ScreenHeader
-        onBack={() => {
-          if (router.canGoBack()) router.back();
-          else router.replace('/results');
-        }}
-        title="How to fill this form"
-        withSafeArea
-      />
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}
-        showsVerticalScrollIndicator={false}
-      >
+    <ScreenWrapper
+      title="How to fill this form"
+      onBack={() => {
+        if (router.canGoBack()) router.back();
+        else router.replace('/results');
+      }}
+      contentContainerStyle={styles.content}
+    >
         <Text style={styles.title}>{evaluation.title}</Text>
         <Text style={styles.lede}>
           Fill this from your profile and goal. Answer what they asked — this is not extra homework
@@ -184,8 +174,7 @@ export default function ApplicationHelpScreen() {
             <Text style={styles.copyLabel}>Copy</Text>
           </Pressable>
         </Card>
-      </ScrollView>
-    </View>
+    </ScreenWrapper>
   );
 }
 
@@ -223,13 +212,6 @@ function BulletRow({
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSoft,
-  },
-  flex: {
-    flex: 1,
-  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 8,

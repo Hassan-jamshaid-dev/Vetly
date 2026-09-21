@@ -40,7 +40,7 @@ What we do not do
 • We do not sell data
 • We do not upload resume file bytes or photos. A screenshot is read on this device so the evaluation can include it; it is not uploaded to Vetly.
 
-This is a demo build. A production version that calls Claude would send your goal text and the opportunity you paste to that API. API keys never belong in a public git repo.
+This is a demo build. A production version that calls Claude would send the opportunity text, your goal, and premium onboarding fields (grade, universities, career, and similar). History and resume file bytes are not in that payload today. API keys never belong in a public git repo.
 
 Last updated: September 2026`,
   },
@@ -50,7 +50,7 @@ Last updated: September 2026`,
 
 Evaluations are guidance, not professional admissions, career, or legal advice. You decide what to apply to.
 
-The free tier allows three evaluations per local calendar day. Premium is $4.99/month or $29.99/year via RevenueCat (vetly_pro). A development build uses RevenueCat Test Store (sandbox, no real money) or later App Store / Play. Expo Go cannot process IAP; a labeled demo unlock is local-only and is not a store purchase.
+The free tier allows three evaluations per local calendar day. Premium is $10.99/month or $80.99/year via RevenueCat (vetly_pro). A development build uses RevenueCat Test Store (sandbox, no real money) or later App Store / Play. Expo Go cannot process IAP; a labeled demo unlock is local-only and is not a store purchase.
 
 Do not rely on Vetly as the only input for university or job applications.
 

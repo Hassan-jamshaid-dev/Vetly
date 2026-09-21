@@ -1,22 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GradientButton } from '@/components/GradientButton';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { DEMO_FORCE_FIRST_RUN } from '@/config/demo';
 import { useResetToHome } from '@/navigation/useResetToHome';
 import { setAccount, setIsSignedIn, type Account } from '@/storage/authStorage';
@@ -90,138 +79,128 @@ export default function SignUpScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="dark" />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScreenHeader
-          onBack={() => {
-            if (router.canGoBack()) router.back();
-            else router.replace('/onboarding');
-          }}
-          title="Sign up"
-          withSafeArea
+    <ScreenWrapper
+      keyboard
+      title="Sign up"
+      onBack={() => {
+        if (router.canGoBack()) router.back();
+        else router.replace('/onboarding');
+      }}
+      contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 32 }]}
+    >
+      <Text style={styles.heading}>Create your account</Text>
+      <Text style={styles.subheading}>
+        Demo only — Google and Apple are simulated. Signing in does not unlock Premium.
+      </Text>
+
+      <View style={styles.form}>
+        <FieldLabel label="Full name" />
+        <View style={styles.inputWrap}>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="Jamie Rivera"
+            placeholderTextColor={colors.placeholder}
+            autoCapitalize="words"
+            autoCorrect
+            textContentType="name"
+            style={styles.input}
+            accessibilityLabel="Full name"
+          />
+        </View>
+
+        <FieldLabel label="Email" />
+        <View style={styles.inputWrap}>
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@school.edu"
+            placeholderTextColor={colors.placeholder}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            textContentType="emailAddress"
+            style={styles.input}
+            accessibilityLabel="Email"
+          />
+        </View>
+
+        <FieldLabel label="Password" />
+        <View style={styles.inputWrap}>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder="At least 6 characters"
+            placeholderTextColor={colors.placeholder}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry={!showPassword}
+            textContentType="password"
+            style={[styles.input, styles.passwordInput]}
+            accessibilityLabel="Password"
+          />
+          <Pressable
+            onPress={() => setShowPassword((open) => !open)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+            style={({ pressed }) => [styles.eye, pressed && styles.pressed]}
+          >
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={22}
+              color={colors.textSecondary}
+            />
+          </Pressable>
+        </View>
+      </View>
+
+      <GradientButton
+        label={saving ? 'Continuing...' : 'Continue'}
+        onPress={handleContinue}
+        disabled={!canContinue}
+        style={styles.primary}
+      />
+
+      <View style={styles.orRow}>
+        <View style={styles.orLine} />
+        <Text style={styles.orText}>or</Text>
+        <View style={styles.orLine} />
+      </View>
+
+      <View style={styles.socialStack}>
+        <SocialButton
+          icon="logo-google"
+          label="Continue with Google (demo)"
+          disabled={saving}
+          onPress={() => handleSocial('google')}
         />
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 32 }]}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
+        <SocialButton
+          icon="logo-apple"
+          label="Continue with Apple (demo)"
+          disabled={saving}
+          onPress={() => handleSocial('apple')}
+        />
+      </View>
+
+      <Text style={styles.legal}>
+        By continuing you agree to{' '}
+        <Text
+          onPress={() => router.push({ pathname: '/legal', params: { page: 'terms' } })}
+          style={styles.legalLink}
         >
-          <Text style={styles.heading}>Create your account</Text>
-          <Text style={styles.subheading}>
-            Demo only — Google and Apple are simulated. Signing in does not unlock Premium.
-          </Text>
-
-          <FieldLabel label="Full name" />
-          <View style={styles.inputWrap}>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Jamie Rivera"
-              placeholderTextColor={colors.placeholder}
-              autoCapitalize="words"
-              autoCorrect
-              textContentType="name"
-              style={styles.input}
-              accessibilityLabel="Full name"
-            />
-          </View>
-
-          <FieldLabel label="Email" />
-          <View style={styles.inputWrap}>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@school.edu"
-              placeholderTextColor={colors.placeholder}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              style={styles.input}
-              accessibilityLabel="Email"
-            />
-          </View>
-
-          <FieldLabel label="Password" />
-          <View style={styles.inputWrap}>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="At least 6 characters"
-              placeholderTextColor={colors.placeholder}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry={!showPassword}
-              textContentType="password"
-              style={[styles.input, styles.passwordInput]}
-              accessibilityLabel="Password"
-            />
-            <Pressable
-              onPress={() => setShowPassword((open) => !open)}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-              style={({ pressed }) => [styles.eye, pressed && styles.pressed]}
-            >
-              <Ionicons
-                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                size={22}
-                color={colors.textSecondary}
-              />
-            </Pressable>
-          </View>
-
-          <GradientButton
-            label={saving ? 'Continuing...' : 'Continue'}
-            onPress={handleContinue}
-            disabled={!canContinue}
-            style={styles.primary}
-          />
-
-          <View style={styles.orRow}>
-            <View style={styles.orLine} />
-            <Text style={styles.orText}>or</Text>
-            <View style={styles.orLine} />
-          </View>
-
-          <SocialButton
-            icon="logo-google"
-            label="Continue with Google (demo)"
-            disabled={saving}
-            onPress={() => handleSocial('google')}
-          />
-          <SocialButton
-            icon="logo-apple"
-            label="Continue with Apple (demo)"
-            disabled={saving}
-            onPress={() => handleSocial('apple')}
-          />
-
-          <Text style={styles.legal}>
-            By continuing you agree to{' '}
-            <Text
-              onPress={() => router.push({ pathname: '/legal', params: { page: 'terms' } })}
-              style={styles.legalLink}
-            >
-              Terms
-            </Text>
-            {' and '}
-            <Text
-              onPress={() => router.push({ pathname: '/legal', params: { page: 'privacy' } })}
-              style={styles.legalLink}
-            >
-              Privacy
-            </Text>
-            .
-          </Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+          Terms
+        </Text>
+        {' and '}
+        <Text
+          onPress={() => router.push({ pathname: '/legal', params: { page: 'privacy' } })}
+          style={styles.legalLink}
+        >
+          Privacy
+        </Text>
+        .
+      </Text>
+    </ScreenWrapper>
   );
 }
 
@@ -259,46 +238,44 @@ function SocialButton({
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSoft,
-  },
-  flex: {
-    flex: 1,
-  },
   body: {
     paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingTop: 12,
   },
   heading: {
     fontFamily: fonts.bold,
     fontSize: 28,
-    lineHeight: 36,
+    lineHeight: 34,
+    letterSpacing: -0.4,
     color: colors.textPrimary,
   },
   subheading: {
-    marginTop: 10,
-    marginBottom: 8,
+    marginTop: 8,
     fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,
     color: colors.textSecondary,
   },
+  form: {
+    marginTop: 20,
+  },
   label: {
     marginTop: 16,
     marginBottom: 8,
-    marginLeft: 4,
-    fontFamily: fonts.semibold,
+    marginLeft: 2,
+    fontFamily: fonts.medium,
     fontSize: 13,
+    lineHeight: 18,
     color: colors.textPrimary,
   },
   inputWrap: {
     minHeight: 52,
-    borderRadius: 16,
+    borderRadius: 14,
+    borderCurve: 'continuous',
     backgroundColor: colors.white,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.hairline,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -314,14 +291,17 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   eye: {
-    padding: 4,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   primary: {
-    marginTop: 24,
+    marginTop: 28,
   },
   orRow: {
-    marginTop: 20,
-    marginBottom: 16,
+    marginTop: 24,
+    marginBottom: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -336,17 +316,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
   },
+  socialStack: {
+    gap: 10,
+  },
   social: {
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: colors.purpleBorder,
+    minHeight: 52,
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.hairline,
     backgroundColor: colors.white,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    marginBottom: 12,
+    paddingHorizontal: 16,
   },
   socialDisabled: {
     opacity: 0.5,
@@ -357,7 +341,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   legal: {
-    marginTop: 8,
+    marginTop: 20,
     fontFamily: fonts.regular,
     fontSize: 13,
     lineHeight: 20,
@@ -369,6 +353,6 @@ const styles = StyleSheet.create({
     color: colors.purple,
   },
   pressed: {
-    opacity: 0.6,
+    opacity: 0.72,
   },
 });

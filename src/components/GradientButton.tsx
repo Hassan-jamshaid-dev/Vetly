@@ -2,10 +2,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { colors } from '@/theme/colors';
+import { motion } from '@/theme/motion';
+import { radius } from '@/theme/radius';
 import { shadows } from '@/theme/shadows';
-import { fonts } from '@/theme/typography';
+import { spacing } from '@/theme/spacing';
+import { type } from '@/theme/typography';
 
 export type GradientButtonProps = {
   label: string;
@@ -20,7 +24,8 @@ export type GradientButtonProps = {
 };
 
 const HEIGHT = 56;
-const RADIUS = HEIGHT / 2;
+const PRESS_OPACITY = 0.9;
+const PRESS_SCALE = 0.98;
 
 /** Full-width pill button filled with the brand gradient. */
 export function GradientButton({
@@ -47,25 +52,39 @@ export function GradientButton({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
-      style={({ pressed }) => [
-        styles.pressable,
-        disabled ? styles.disabled : styles.shadow,
-        pressed && !disabled && styles.pressed,
-        style,
-      ]}
+      style={[styles.pressable, style]}
     >
-      {disabled ? (
-        <View style={[styles.surface, styles.flatDisabled]}>{content}</View>
-      ) : (
-        <LinearGradient
-          colors={colors.gradient}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={styles.surface}
-        >
-          {content}
-        </LinearGradient>
-      )}
+      {({ pressed }) => {
+        const active = !disabled && pressed;
+        return (
+          <Animated.View
+            style={[
+              styles.shell,
+              !disabled && styles.shadow,
+              {
+                opacity: disabled ? 0.45 : active ? PRESS_OPACITY : 1,
+                transform: [{ scale: active ? PRESS_SCALE : 1 }],
+                transitionProperty: ['opacity', 'transform'],
+                transitionDuration: motion.fast,
+                transitionTimingFunction: motion.easing.easeOut,
+              },
+            ]}
+          >
+            {disabled ? (
+              <View style={[styles.surface, styles.flatDisabled]}>{content}</View>
+            ) : (
+              <LinearGradient
+                colors={colors.gradient}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={styles.surface}
+              >
+                {content}
+              </LinearGradient>
+            )}
+          </Animated.View>
+        );
+      }}
     </Pressable>
   );
 }
@@ -73,39 +92,36 @@ export function GradientButton({
 const styles = StyleSheet.create({
   pressable: {
     width: '100%',
-    borderRadius: RADIUS,
+    minHeight: HEIGHT,
+    borderRadius: radius.full,
+  },
+  shell: {
+    width: '100%',
+    minHeight: HEIGHT,
+    borderRadius: radius.full,
   },
   shadow: {
-    boxShadow: shadows.button,
-  },
-  pressed: {
-    transform: [{ scale: 0.98 }],
-  },
-  disabled: {
-    opacity: 0.4,
+    boxShadow: shadows.raised,
   },
   surface: {
     minHeight: HEIGHT,
-    borderRadius: RADIUS,
+    borderRadius: radius.full,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 22,
-    paddingVertical: 14,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
   },
   flatDisabled: {
     backgroundColor: colors.buttonDisabled,
   },
   label: {
-    color: colors.white,
-    fontFamily: fonts.semibold,
-    fontSize: 17,
-    lineHeight: 22,
+    ...type.button,
   },
   leadingIcon: {
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   trailingIcon: {
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
 });

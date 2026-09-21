@@ -158,7 +158,12 @@ export function VMarkTile({ size, style }: VMarkTileProps) {
     <View
       style={[
         styles.tile,
-        { width: size, height: size, borderRadius: Math.round(size * 0.22) },
+        {
+          width: size,
+          height: size,
+          borderRadius: Math.round(size * 0.22),
+          borderCurve: 'continuous',
+        },
         style,
       ]}
     >

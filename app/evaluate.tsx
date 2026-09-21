@@ -2,25 +2,23 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
   Keyboard,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type ScrollView,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/Card';
 import { ExampleCard } from '@/components/ExampleCard';
-import { GradientButton } from '@/components/GradientButton';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
+import { StickyBottomButton } from '@/components/StickyBottomButton';
 import { evaluateOpportunity } from '@/services/evaluation';
 import { saveEvaluationRemote } from '@/services/evaluationCloud';
 import { getGoal } from '@/storage/goalStorage';
@@ -30,7 +28,7 @@ import { getProfile } from '@/storage/profileStorage';
 import { consumeOne, getRemainingToday } from '@/storage/usageStorage';
 import { setCurrentEvaluation } from '@/store/evaluationStore';
 import { colors } from '@/theme/colors';
-import { fonts } from '@/theme/typography';
+import { fonts, type } from '@/theme/typography';
 import { showAlert } from '@/utils/dialog';
 
 const MAX_CHARS = 2000;
@@ -67,7 +65,6 @@ const EXAMPLES = [
 // Stack screen: evaluate an opportunity. Lives above the tabs so Home stays a dashboard.
 export default function EvaluateScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
 
   const [text, setText] = useState('');
@@ -183,125 +180,111 @@ export default function EvaluateScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="dark" />
-      <ScreenHeader onBack={goHome} title="Evaluate" withSafeArea />
-      <ScrollView
-        ref={scrollRef}
-        style={styles.flex}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets
-        showsVerticalScrollIndicator={false}
-      >
-        <Pressable onPress={Keyboard.dismiss} accessible={false}>
-          <Text style={styles.greeting}>What are you considering?</Text>
-
-          <Card padding={18} style={styles.inputCard}>
-            <Text style={styles.cardHeading}>Paste or describe it</Text>
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              multiline
-              maxLength={MAX_CHARS}
-              textAlignVertical="top"
-              placeholder={INPUT_PLACEHOLDER}
-              placeholderTextColor={colors.placeholder}
-              style={styles.input}
-              editable={!isAnalyzing}
-              accessibilityLabel="Opportunity description"
-            />
-            {text.length > 0 ? (
-              <Text style={styles.charCounter}>
-                {text.length} / {MAX_CHARS} characters
-              </Text>
-            ) : null}
-
-            <View style={styles.uploadRow}>
-              <Pressable
-                onPress={handlePickImage}
-                disabled={isAnalyzing}
-                accessibilityRole="button"
-                style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
-              >
-                <Ionicons name="image-outline" size={18} color={colors.purple} />
-                <Text style={styles.pillLabel}>Upload screenshot</Text>
-              </Pressable>
-
-              {imageUri ? (
-                <View style={styles.thumbWrap}>
-                  <Image source={{ uri: imageUri }} style={styles.thumb} />
-                  <Pressable
-                    onPress={() => setImageUri(null)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Remove screenshot"
-                    style={styles.removeBadge}
-                  >
-                    <Ionicons name="close" size={12} color={colors.white} />
-                  </Pressable>
-                </View>
-              ) : null}
-            </View>
-          </Card>
-
-          <View style={styles.analyzeWrap}>
-            <GradientButton
-              label={isAnalyzing ? 'Analyzing...' : 'Analyze'}
-              onPress={handleAnalyze}
-              disabled={!canAnalyze}
-              icon={
-                isAnalyzing ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Ionicons name="sparkles" size={18} color={colors.white} />
-                )
-              }
-            />
-          </View>
-
-          <Text style={styles.sectionHeading}>Examples</Text>
-          <View style={styles.examples}>
-            {EXAMPLES.map((example) => (
-              <ExampleCard
-                key={example.title}
-                icon={example.icon}
-                title={example.title}
-                url={example.url}
-                onPress={() => handleExample(example.description, example.url)}
-              />
-            ))}
-          </View>
-        </Pressable>
-      </ScrollView>
-      {isPremium ? (
-        <Text style={[styles.footer, { paddingBottom: insets.bottom + 10 }]} maxFontSizeMultiplier={1.3}>
-          Unlimited evaluations
-        </Text>
-      ) : remaining !== null ? (
-        <Text
-          style={[styles.footer, remaining === 0 && styles.footerWarning, { paddingBottom: insets.bottom + 10 }]}
-          maxFontSizeMultiplier={1.3}
+    <ScreenWrapper
+      keyboard
+      title="Evaluate"
+      onBack={goHome}
+      scrollRef={scrollRef}
+      contentContainerStyle={styles.content}
+      footer={
+        <StickyBottomButton
+          label={isAnalyzing ? 'Analyzing...' : 'Analyze'}
+          onPress={handleAnalyze}
+          disabled={!canAnalyze}
+          icon={
+            isAnalyzing ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : undefined
+          }
+          style={styles.footerBar}
         >
-          {remaining === 0
-            ? 'No free evaluations left today'
-            : `${remaining} free evaluation${remaining === 1 ? '' : 's'} left today`}
-        </Text>
-      ) : null}
-    </View>
+          {isPremium ? (
+            <Text style={styles.quota} maxFontSizeMultiplier={1.3}>
+              Unlimited evaluations
+            </Text>
+          ) : remaining !== null ? (
+            <Text
+              style={[styles.quota, remaining === 0 && styles.quotaWarning]}
+              maxFontSizeMultiplier={1.3}
+            >
+              {remaining === 0
+                ? 'No free evaluations left today'
+                : `${remaining} free evaluation${remaining === 1 ? '' : 's'} left today`}
+            </Text>
+          ) : null}
+        </StickyBottomButton>
+      }
+    >
+      <Pressable onPress={Keyboard.dismiss} accessible={false}>
+        <Text style={styles.headline}>What are you considering?</Text>
+
+        <Text style={styles.fieldLabel}>Opportunity</Text>
+        <Card radius={20} padding={0}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            multiline
+            maxLength={MAX_CHARS}
+            textAlignVertical="top"
+            placeholder={INPUT_PLACEHOLDER}
+            placeholderTextColor={colors.placeholder}
+            style={styles.input}
+            editable={!isAnalyzing}
+            accessibilityLabel="Opportunity description"
+          />
+        </Card>
+        <View style={styles.counterRow}>
+          <Text style={styles.charCounter}>
+            {text.length} / {MAX_CHARS}
+          </Text>
+        </View>
+
+        <View style={styles.uploadRow}>
+          <Pressable
+            onPress={handlePickImage}
+            disabled={isAnalyzing}
+            accessibilityRole="button"
+            accessibilityLabel="Upload screenshot"
+            style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
+          >
+            <Ionicons name="image-outline" size={18} color={colors.purple} />
+            <Text style={styles.pillLabel}>Upload screenshot</Text>
+          </Pressable>
+
+          {imageUri ? (
+            <View style={styles.thumbWrap}>
+              <Image source={{ uri: imageUri }} style={styles.thumb} />
+              <Pressable
+                onPress={() => setImageUri(null)}
+                hitSlop={14}
+                accessibilityRole="button"
+                accessibilityLabel="Remove screenshot"
+                style={styles.removeBadge}
+              >
+                <Ionicons name="close" size={12} color={colors.white} />
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+
+        <Text style={styles.sectionHeading}>Examples</Text>
+        <View style={styles.examples}>
+          {EXAMPLES.map((example) => (
+            <ExampleCard
+              key={example.title}
+              icon={example.icon}
+              title={example.title}
+              url={example.url}
+              onPress={() => handleExample(example.description, example.url)}
+            />
+          ))}
+        </View>
+      </Pressable>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSoft,
-    overflow: 'hidden',
-  },
-  flex: {
-    flex: 1,
-  },
   content: {
     paddingHorizontal: 20,
     paddingBottom: 16,
@@ -309,39 +292,41 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.6,
   },
-  greeting: {
-    marginTop: 8,
+  headline: {
+    marginTop: 12,
+    ...type.h2,
     fontFamily: fonts.bold,
-    fontSize: 26,
-    lineHeight: 34,
     color: colors.textPrimary,
   },
-  inputCard: {
-    marginTop: 20,
-  },
-  cardHeading: {
+  fieldLabel: {
+    ...type.label,
+    marginTop: 28,
+    marginBottom: 10,
     fontFamily: fonts.semibold,
-    fontSize: 15,
-    color: colors.textPrimary,
+    letterSpacing: 0.4,
   },
   input: {
-    marginTop: 10,
-    minHeight: 120,
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textPrimary,
-    padding: 0,
+    ...type.body,
+    minHeight: 148,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 16,
+    includeFontPadding: false,
+  },
+  counterRow: {
+    marginTop: 8,
+    paddingHorizontal: 4,
+    alignItems: 'flex-end',
   },
   charCounter: {
-    marginTop: 8,
-    alignSelf: 'flex-end',
+    ...type.caption,
     fontFamily: fonts.medium,
-    fontSize: 12,
-    color: colors.textSecondary,
+    color: colors.muted,
+    fontVariant: ['tabular-nums'],
+    includeFontPadding: false,
   },
   uploadRow: {
-    marginTop: 12,
+    marginTop: 20,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -350,7 +335,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.purpleBorder,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -358,10 +343,11 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontFamily: fonts.medium,
     fontSize: 14,
+    lineHeight: 18,
     color: colors.purple,
   },
   thumbWrap: {
-    marginLeft: 12,
+    marginLeft: 14,
     width: 64,
     height: 64,
   },
@@ -369,46 +355,45 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 12,
+    borderCurve: 'continuous',
     backgroundColor: colors.backgroundSoft,
   },
   removeBadge: {
     position: 'absolute',
     top: -6,
     right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: colors.textPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.white,
   },
-  analyzeWrap: {
-    marginTop: 16,
-  },
   sectionHeading: {
-    marginTop: 28,
-    marginBottom: 12,
+    ...type.label,
+    marginTop: 36,
+    marginBottom: 14,
     fontFamily: fonts.semibold,
-    fontSize: 13,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    color: colors.textSecondary,
   },
   examples: {
     gap: 12,
   },
-  footer: {
+  footerBar: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+  },
+  quota: {
+    marginTop: 10,
     fontFamily: fonts.regular,
     fontSize: 13,
+    lineHeight: 18,
     color: colors.textSecondary,
     textAlign: 'center',
-    backgroundColor: colors.backgroundSoft,
   },
-  footerWarning: {
+  quotaWarning: {
     color: colors.warning,
   },
 });

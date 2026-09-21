@@ -17,6 +17,13 @@ const MAX_LATENCY_MS = 1900;
 /**
  * Evaluates an opportunity against the user's saved goal.
  * Resolves after a short, believable delay with a fully populated Evaluation.
+ *
+ * Callers already pass: opportunity text (+ optional local imageUri), the
+ * saved goal string, and the premium StudentProfile when one exists (grade,
+ * universities, career, activities, situation, resume filename/URI). History
+ * is not in this payload. Resume bytes are not read. A future Claude body
+ * should use opportunity + goal + those profile fields; do not add a client
+ * API key here.
  */
 export async function evaluateOpportunity(
   input: EvaluationInput,

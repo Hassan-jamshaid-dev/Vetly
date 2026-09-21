@@ -1,13 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/Card';
 import { GradientButton } from '@/components/GradientButton';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { SettingsRow } from '@/components/SettingsRow';
 import {
   hasPublicRevenueCatApiKey,
@@ -26,7 +23,6 @@ import { showAlert } from '@/utils/dialog';
 // Settings list, opened from the gear on Home or Profile. The Profile tab itself is the person page.
 export default function SettingsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [account, setAccountState] = useState<Account | null>(null);
   const [needsResume, setNeedsResume] = useState(false);
@@ -163,18 +159,9 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="dark" />
-      <ScreenHeader onBack={goBack} title="Settings" withSafeArea />
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={{
-          paddingBottom: insets.bottom + 32,
-          paddingHorizontal: 20,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        {account ? (
+    <ScreenWrapper title="Settings" onBack={goBack} contentContainerStyle={styles.body}>
+      {account ? (
+        <Card radius={16} style={styles.accountCard}>
           <View style={styles.accountRow}>
             <View style={styles.avatar}>
               <Text style={styles.avatarLetter}>{account.name.charAt(0).toUpperCase()}</Text>
@@ -184,10 +171,12 @@ export default function SettingsScreen() {
               <Text style={styles.accountEmail}>{account.email}</Text>
             </View>
           </View>
-        ) : null}
+        </Card>
+      ) : null}
 
-        <Text style={styles.sectionLabel}>Your goal</Text>
-        <Card padding={0} radius={16}>
+      <Text style={[styles.sectionLabel, account ? null : styles.sectionFirst]}>Your goal</Text>
+      <Card padding={0} radius={16}>
+        <View style={styles.groupClip}>
           <SettingsRow
             icon="create-outline"
             label="Edit your goal"
@@ -202,10 +191,12 @@ export default function SettingsScreen() {
               isLast
             />
           ) : null}
-        </Card>
+        </View>
+      </Card>
 
-        <Text style={styles.sectionLabel}>App</Text>
-        <Card padding={0} radius={16}>
+      <Text style={styles.sectionLabel}>App</Text>
+      <Card padding={0} radius={16}>
+        <View style={styles.groupClip}>
           <SettingsRow
             icon="information-circle-outline"
             label="About Vetly"
@@ -222,10 +213,12 @@ export default function SettingsScreen() {
             onPress={() => router.push({ pathname: '/legal', params: { page: 'terms' } })}
             isLast
           />
-        </Card>
+        </View>
+      </Card>
 
-        <Text style={styles.sectionLabel}>Subscription</Text>
-        <Card padding={0} radius={16}>
+      <Text style={styles.sectionLabel}>Subscription</Text>
+      <Card padding={0} radius={16}>
+        <View style={styles.groupClip}>
           <SettingsRow
             icon="refresh-outline"
             label={busy ? 'Working...' : 'Restore purchases'}
@@ -244,102 +237,106 @@ export default function SettingsScreen() {
               isLast
             />
           ) : null}
-        </Card>
+        </View>
+      </Card>
 
-        {isPremium === true ? (
-          <View style={styles.premiumBanner}>
-            <Ionicons name="checkmark-circle" size={22} color={colors.success} />
-            <Text style={styles.premiumBannerText}>
-              {nativeAvailable
-                ? 'You are on Vetly Premium'
-                : 'Demo Premium on this device — not a store purchase'}
-            </Text>
-          </View>
-        ) : isPremium === false ? (
-          <View style={styles.upgrade}>
-            <GradientButton
-              label="Upgrade to Premium"
-              onPress={() => router.push('/paywall')}
-            />
-            <Text style={styles.upgradeHint}>Unlimited evaluations and full application guidance</Text>
-          </View>
-        ) : null}
+      {isPremium === true ? (
+        <Text style={styles.footnote}>
+          {nativeAvailable
+            ? 'Vetly Premium is on this device.'
+            : 'Demo Premium on this device — not a store purchase.'}
+        </Text>
+      ) : isPremium === false ? (
+        <View style={styles.upgrade}>
+          <GradientButton label="Upgrade to Premium" onPress={() => router.push('/paywall')} />
+          <Text style={styles.upgradeHint}>Unlimited evaluations and full application guidance</Text>
+        </View>
+      ) : null}
 
-        {account ? (
-          <Pressable
-            onPress={handleLogout}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
-          >
-            <Text style={styles.logoutLabel}>Log out</Text>
-          </Pressable>
-        ) : null}
-
+      {account ? (
         <Pressable
-          onPress={() => router.push({ pathname: '/legal', params: { page: 'about' } })}
-          accessibilityRole="link"
-          style={styles.versionWrap}
+          onPress={handleLogout}
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+          style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
         >
-          <Text style={styles.version}>Vetly 1.0.0 · know before you go</Text>
+          <Text style={styles.logoutLabel}>Log out</Text>
         </Pressable>
-      </ScrollView>
-    </View>
+      ) : null}
+
+      <Pressable
+        onPress={() => router.push({ pathname: '/legal', params: { page: 'about' } })}
+        accessibilityRole="link"
+        style={styles.versionWrap}
+      >
+        <Text style={styles.version}>Vetly 1.0.0 · know before you go</Text>
+      </Pressable>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSoft,
+  body: {
+    paddingHorizontal: 20,
   },
-  flex: {
-    flex: 1,
+  accountCard: {
+    marginTop: 4,
   },
   accountRow: {
-    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 44,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.purpleTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarLetter: {
     fontFamily: fonts.bold,
-    fontSize: 22,
+    fontSize: 18,
     color: colors.purple,
   },
   accountText: {
     flex: 1,
-    marginLeft: 14,
+    marginLeft: 12,
+    minWidth: 0,
   },
   accountName: {
     fontFamily: fonts.semibold,
-    fontSize: 18,
+    fontSize: 16,
+    lineHeight: 22,
     color: colors.textPrimary,
   },
   accountEmail: {
     marginTop: 2,
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.textSecondary,
+  },
+  groupClip: {
+    overflow: 'hidden',
+    borderRadius: 16,
+    borderCurve: 'continuous',
   },
   sectionLabel: {
     marginTop: 24,
     marginBottom: 8,
-    marginLeft: 4,
-    fontFamily: fonts.semibold,
+    marginLeft: 16,
+    fontFamily: fonts.medium,
     fontSize: 13,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    lineHeight: 18,
     color: colors.textSecondary,
   },
+  sectionFirst: {
+    marginTop: 8,
+  },
   upgrade: {
-    marginTop: 32,
+    marginTop: 28,
   },
   upgradeHint: {
     marginTop: 12,
@@ -349,22 +346,19 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  premiumBanner: {
-    marginTop: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  premiumBannerText: {
-    fontFamily: fonts.medium,
-    fontSize: 15,
-    color: colors.textPrimary,
+  footnote: {
+    marginTop: 12,
+    marginLeft: 16,
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
   },
   logout: {
-    marginTop: 28,
+    marginTop: 20,
     alignItems: 'center',
-    paddingVertical: 8,
+    justifyContent: 'center',
+    minHeight: 44,
   },
   logoutLabel: {
     fontFamily: fonts.semibold,
@@ -375,8 +369,10 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   versionWrap: {
-    marginTop: 28,
+    marginTop: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
   },
   version: {
     fontFamily: fonts.regular,

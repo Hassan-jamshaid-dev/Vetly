@@ -1,33 +1,36 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
-import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/Card';
 import { GuidanceCard } from '@/components/GuidanceCard';
 import { InsightRow } from '@/components/InsightRow';
 import { LockedCard } from '@/components/LockedCard';
 import { ScoreRing } from '@/components/ScoreRing';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
+import { SoftSkeleton } from '@/components/SoftSkeleton';
 import { colorForScore } from '@/services/score';
 import { getIsPremium } from '@/storage/premiumStorage';
 import { getCurrentEvaluation, wasOpenedFromEvaluate } from '@/store/evaluationStore';
 import { colors } from '@/theme/colors';
-import { fonts } from '@/theme/typography';
+import { fonts, type } from '@/theme/typography';
 import type { Evaluation } from '@/types/evaluation';
 
 // Screen 5: Results. Score, insights, and premium guidance for the evaluation
 // currently in evaluationStore (from Evaluate, History, or Home).
 export default function ResultsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   // Re-read on focus so a recycled Results screen picks up a new evaluation,
   // and an empty store (deep link / hot reload) cannot sit as a blank dead end.
   const [evaluation, setEvaluation] = useState<Evaluation | null>(() => getCurrentEvaluation());
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
+
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/home');
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -47,105 +50,85 @@ export default function ResultsScreen() {
     }, [router]),
   );
 
-  if (!evaluation) return null;
+  if (!evaluation) {
+    return (
+      <ScreenWrapper title="Results" onBack={goBack} contentContainerStyle={styles.content}>
+        <SoftSkeleton height={28} style={styles.titleSkeleton} />
+        <SoftSkeleton height={16} style={styles.sourceSkeleton} />
+        <SoftSkeleton height={248} style={styles.scoreSkeleton} />
+        <SoftSkeleton height={160} style={styles.blockSkeleton} />
+      </ScreenWrapper>
+    );
+  }
 
   const scoreColor = colorForScore(evaluation.score);
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="dark" />
-      <ScreenHeader
-        onBack={() => {
-          if (router.canGoBack()) router.back();
-          else router.replace('/(tabs)/home');
-        }}
-        title="Results"
-        withSafeArea
-      />
-
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Opportunity title + source */}
-        <FadeIn index={0}>
-          <Text style={styles.title} numberOfLines={2}>
-            {evaluation.title}
+    <ScreenWrapper title="Results" onBack={goBack} contentContainerStyle={styles.content}>
+      <FadeIn>
+        <Text style={styles.title} selectable>
+          {evaluation.title}
+        </Text>
+        <View style={styles.sourceRow}>
+          <Ionicons name={sourceIcon(evaluation.source)} size={14} color={colors.textSecondary} />
+          <Text style={styles.source} numberOfLines={1}>
+            {evaluation.source}
           </Text>
-          <View style={styles.sourceRow}>
-            <Ionicons name={sourceIcon(evaluation.source)} size={14} color={colors.textSecondary} />
-            <Text style={styles.source} numberOfLines={1}>
-              {evaluation.source}
-            </Text>
+        </View>
+
+        <Card style={styles.scoreCard}>
+          <ScoreRing score={evaluation.score} />
+          <View style={[styles.badge, { backgroundColor: `${scoreColor}1F` }]}>
+            <Ionicons name={labelIcon(evaluation.score)} size={16} color={scoreColor} />
+            <Text style={[styles.badgeText, { color: scoreColor }]}>{evaluation.label}</Text>
           </View>
-        </FadeIn>
+        </Card>
 
-        {/* Score */}
-        <FadeIn index={1}>
-          <Card style={styles.scoreCard}>
-            <ScoreRing score={evaluation.score} />
-            <View style={[styles.badge, { backgroundColor: `${scoreColor}1F` }]}>
-              <Ionicons name={labelIcon(evaluation.score)} size={16} color={scoreColor} />
-              <Text style={[styles.badgeText, { color: scoreColor }]}>{evaluation.label}</Text>
-            </View>
-          </Card>
-        </FadeIn>
+        <Text style={styles.sectionHeading}>Key insights</Text>
+        <Card padding={20} style={styles.insightsCard}>
+          {evaluation.insights.map((insight, i) => (
+            <InsightRow
+              key={`insight-${i}`}
+              insight={insight}
+              isLast={i === evaluation.insights.length - 1}
+            />
+          ))}
+        </Card>
 
-        {/* Key insights */}
-        <FadeIn index={2}>
-          <Text style={styles.sectionHeading}>Key insights</Text>
-          <Card padding={16} style={styles.insightsCard}>
-            {evaluation.insights.map((insight, i) => (
-              <InsightRow
-                key={`insight-${i}`}
-                insight={insight}
-                isLast={i === evaluation.insights.length - 1}
-              />
-            ))}
-          </Card>
-        </FadeIn>
+        <View style={styles.lockedWrap}>
+          {isPremium === true ? (
+            <>
+              <GuidanceCard guidance={evaluation.guidance} />
+              {evaluation.hasApplication ? (
+                <Pressable
+                  onPress={() => router.push('/application-help')}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.helpBtn, pressed && styles.pressed]}
+                >
+                  <Ionicons name="create-outline" size={16} color={colors.purple} />
+                  <Text style={styles.helpBtnLabel}>How to fill this form</Text>
+                </Pressable>
+              ) : null}
+            </>
+          ) : isPremium === false ? (
+            <LockedCard onUnlock={() => router.push('/paywall')} />
+          ) : (
+            <SoftSkeleton height={196} style={styles.guidanceSkeleton} />
+          )}
+        </View>
 
-        {/* Preparation guidance: locked for free, full copy for Premium. */}
-        <FadeIn index={3}>
-          <View style={styles.lockedWrap}>
-            {isPremium === true ? (
-              <>
-                <GuidanceCard guidance={evaluation.guidance} />
-                {evaluation.hasApplication ? (
-                  <Pressable
-                    onPress={() => router.push('/application-help')}
-                    accessibilityRole="button"
-                    style={({ pressed }) => [styles.helpBtn, pressed && styles.pressed]}
-                  >
-                    <Ionicons name="create-outline" size={16} color={colors.purple} />
-                    <Text style={styles.helpBtnLabel}>How to fill this form</Text>
-                  </Pressable>
-                ) : null}
-              </>
-            ) : isPremium === false ? (
-              <LockedCard onUnlock={() => router.push('/paywall')} />
-            ) : (
-              <View style={styles.guidanceSkeleton} />
-            )}
-          </View>
-        </FadeIn>
-
-        <FadeIn index={4}>
-          <Pressable
-            onPress={() => {
-              if (wasOpenedFromEvaluate() && router.canGoBack()) router.back();
-              else router.replace('/evaluate');
-            }}
-            hitSlop={8}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.again, pressed && styles.pressed]}
-          >
-            <Text style={styles.againText}>Evaluate another</Text>
-          </Pressable>
-        </FadeIn>
-      </ScrollView>
-    </View>
+        <Pressable
+          onPress={() => {
+            if (wasOpenedFromEvaluate() && router.canGoBack()) router.back();
+            else router.replace('/evaluate');
+          }}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.again, pressed && styles.pressed]}
+        >
+          <Text style={styles.againText}>Evaluate another</Text>
+        </Pressable>
+      </FadeIn>
+    </ScreenWrapper>
   );
 }
 
@@ -167,58 +150,53 @@ function labelIcon(score: number): IoniconName {
   return 'alert-circle';
 }
 
-const FADE_DURATION = 180;
-const FADE_STAGGER = 40;
+const FADE_DURATION = 200;
 
-/** Fades and rises its children in on mount, delayed by `index * 60ms`. */
-function FadeIn({ index, children }: { index: number; children: ReactNode }) {
+/** Opacity-only enter so the score is the first thing that reads. */
+function FadeIn({ children }: { children: ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(14)).current;
 
   useEffect(() => {
-    const animation = Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: FADE_DURATION,
-        delay: index * FADE_STAGGER,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: FADE_DURATION,
-        delay: index * FADE_STAGGER,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-    ]);
+    const animation = Animated.timing(opacity, {
+      toValue: 1,
+      duration: FADE_DURATION,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: Platform.OS !== 'web',
+    });
     animation.start();
     return () => animation.stop();
-  }, [index, opacity, translateY]);
+  }, [opacity]);
 
-  return <Animated.View style={{ opacity, transform: [{ translateY }] }}>{children}</Animated.View>;
+  return <Animated.View style={{ opacity }}>{children}</Animated.View>;
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSoft,
-  },
-  flex: {
-    flex: 1,
-  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 8,
   },
+  titleSkeleton: {
+    width: '72%',
+  },
+  sourceSkeleton: {
+    width: '40%',
+    marginTop: 10,
+  },
+  scoreSkeleton: {
+    marginTop: 24,
+    borderRadius: 20,
+  },
+  blockSkeleton: {
+    marginTop: 28,
+    borderRadius: 20,
+  },
   title: {
+    ...type.h2,
     fontFamily: fonts.bold,
-    fontSize: 22,
-    lineHeight: 28,
     color: colors.textPrimary,
   },
   sourceRow: {
-    marginTop: 6,
+    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -227,49 +205,48 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fonts.regular,
     fontSize: 13,
+    lineHeight: 18,
     color: colors.textSecondary,
   },
   scoreCard: {
-    marginTop: 20,
+    marginTop: 28,
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
   },
   badge: {
-    marginTop: 18,
+    marginTop: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
   },
   badgeText: {
     marginLeft: 6,
     fontFamily: fonts.semibold,
     fontSize: 13,
+    lineHeight: 18,
   },
   sectionHeading: {
-    marginTop: 28,
-    marginBottom: 12,
-    fontFamily: fonts.bold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: colors.textPrimary,
+    ...type.label,
+    marginTop: 32,
+    marginBottom: 14,
+    fontFamily: fonts.semibold,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   insightsCard: {
-    paddingVertical: 4,
+    paddingVertical: 8,
   },
   lockedWrap: {
-    marginTop: 20,
+    marginTop: 28,
   },
   guidanceSkeleton: {
-    height: 180,
     borderRadius: 20,
-    borderCurve: 'continuous',
-    backgroundColor: colors.skeleton,
-    opacity: 0.5,
   },
   helpBtn: {
-    marginTop: 14,
+    marginTop: 16,
     alignSelf: 'center',
     minHeight: 44,
     borderRadius: 22,
@@ -283,13 +260,16 @@ const styles = StyleSheet.create({
   helpBtnLabel: {
     fontFamily: fonts.semibold,
     fontSize: 14,
+    lineHeight: 18,
     color: colors.purple,
   },
   again: {
-    marginVertical: 16,
+    marginTop: 12,
+    marginBottom: 8,
     alignSelf: 'center',
+    minHeight: 44,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    justifyContent: 'center',
   },
   pressed: {
     opacity: 0.6,
@@ -297,6 +277,7 @@ const styles = StyleSheet.create({
   againText: {
     fontFamily: fonts.semibold,
     fontSize: 15,
+    lineHeight: 20,
     color: colors.purple,
   },
 });

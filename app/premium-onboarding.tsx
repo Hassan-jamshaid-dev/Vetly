@@ -1,12 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,8 +15,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/Card';
-import { GradientButton } from '@/components/GradientButton';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { MultilineField } from '@/components/MultilineField';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
+import { StickyBottomButton } from '@/components/StickyBottomButton';
 import { VMark } from '@/components/VMark';
 import { Blob } from '@/components/decor/Blob';
 import { firstQueryParam } from '@/navigation/queryParam';
@@ -87,14 +85,14 @@ function ProfileDecor({ width, height }: { width: number; height: number }) {
         width={width * 0.62}
         height={width * 0.42}
         color={colors.decor.lavender}
-        opacity={0.55}
+        opacity={0.22}
       />
       <Blob
         cx={width * 0.08}
         cy={height * 0.38}
         width={width * 0.48}
         color={colors.decor.periwinkle}
-        opacity={0.38}
+        opacity={0.16}
       />
       <Blob
         cx={width * 0.94}
@@ -102,7 +100,7 @@ function ProfileDecor({ width, height }: { width: number; height: number }) {
         width={width * 0.5}
         height={width * 0.38}
         color={colors.decor.ice}
-        opacity={0.42}
+        opacity={0.18}
       />
     </View>
   );
@@ -215,37 +213,33 @@ export default function PremiumOnboardingScreen() {
   };
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="dark" />
-      <ProfileDecor width={width} height={height} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-        >
-          <View>
-            <ScreenHeader onBack={goBack} withSafeArea />
-            <View
-              pointerEvents="none"
-              style={[styles.markSlot, { top: insets.top, height: 56 }]}
-            >
-              <VMark size={34} />
-            </View>
-          </View>
-
-          <View style={styles.body}>
-            <Text style={styles.eyebrow}>{isEdit ? 'EDIT PROFILE' : 'YOUR PROFILE'}</Text>
-            <Text style={styles.heading}>{isEdit ? 'Update your profile' : 'Tell us about you'}</Text>
-            <Text style={styles.subheading}>
-              Premium uses this profile — grade, career, and situation — when it evaluates
-              opportunities for you.
-            </Text>
+    <>
+    <ScreenWrapper
+      keyboard
+      onBack={goBack}
+      headerRight={<VMark size={34} />}
+      background={<ProfileDecor width={width} height={height} />}
+      contentContainerStyle={styles.body}
+      footer={
+        <StickyBottomButton
+          label={saving ? 'Saving...' : isEdit ? 'Save' : 'Continue'}
+          onPress={() => {
+            void handleContinue();
+          }}
+          disabled={!canContinue}
+          trailingIcon={
+            saving || isEdit ? undefined : (
+              <Ionicons name="arrow-forward" size={18} color={colors.white} />
+            )
+          }
+        />
+      }
+    >
+          <Text style={styles.heading}>{isEdit ? 'Update your profile' : 'Tell us about you'}</Text>
+          <Text style={styles.subheading}>
+            Grade, career, and situation — one step at a time. Premium uses this when it
+            evaluates opportunities for you.
+          </Text>
 
             <FieldHeader
               icon="school-outline"
@@ -253,7 +247,7 @@ export default function PremiumOnboardingScreen() {
               infoTitle="Grade Level"
               infoMessage="Your current year in school. Vetly uses this so it does not recommend opportunities that are too early or too late."
             />
-            <Card radius={28} padding={0} style={styles.fieldCard}>
+            <Card radius={20} padding={0} style={styles.fieldCard}>
               <Pressable
                 onPress={() => {
                   Keyboard.dismiss();
@@ -296,7 +290,7 @@ export default function PremiumOnboardingScreen() {
                 ))}
               </View>
             ) : null}
-            <Card radius={28} padding={0} style={styles.fieldCard}>
+            <Card radius={20} padding={0} style={styles.fieldCard}>
               <View style={styles.inputRow}>
                 <Ionicons name="search-outline" size={18} color={colors.placeholder} />
                 <TextInput
@@ -320,7 +314,7 @@ export default function PremiumOnboardingScreen() {
               infoTitle="Dream Career"
               infoMessage="The role, field, or company you want to build toward. Premium uses this when it evaluates an opportunity."
             />
-            <Card radius={28} padding={0} style={styles.fieldCard}>
+            <Card radius={20} padding={0} style={styles.fieldCard}>
               <View style={styles.inputRow}>
                 <Ionicons name="attach-outline" size={18} color={colors.placeholder} />
                 <TextInput
@@ -342,22 +336,15 @@ export default function PremiumOnboardingScreen() {
               infoTitle="Current Activities"
               infoMessage="Clubs, internships, projects, sports, and other things you are doing now."
             />
-            <Card radius={22} padding={16} style={styles.areaCard}>
-              <TextInput
-                value={activities}
-                onChangeText={(value) => setActivities(value.slice(0, FIELD_MAX))}
-                multiline
-                maxLength={FIELD_MAX}
-                textAlignVertical="top"
-                placeholder="Clubs, internships, projects, sports…"
-                placeholderTextColor={colors.placeholder}
-                style={styles.multiInput}
-                accessibilityLabel="Current activities"
-              />
-              <Text style={styles.counter}>
-                {activitiesLen}/{FIELD_MAX}
-              </Text>
-            </Card>
+            <MultilineField
+              value={activities}
+              onChangeText={(value) => setActivities(value.slice(0, FIELD_MAX))}
+              maxLength={FIELD_MAX}
+              minHeight={88}
+              placeholder="Clubs, internships, projects, sports…"
+              accessibilityLabel="Current activities"
+              counter={`${activitiesLen}/${FIELD_MAX}`}
+            />
 
             <FieldHeader
               icon="locate-outline"
@@ -365,48 +352,30 @@ export default function PremiumOnboardingScreen() {
               infoTitle="Your Situation and Goals"
               infoMessage="Where you are now, what you want next, and any constraints Vetly should know when it evaluates opportunities."
             />
-            <Card radius={22} padding={16} style={styles.areaCard}>
-              <TextInput
-                value={situation}
-                onChangeText={(value) => setSituation(value.slice(0, FIELD_MAX))}
-                multiline
-                maxLength={FIELD_MAX}
-                textAlignVertical="top"
-                placeholder="Where you are now, what you want next, and any constraints Vetly should know."
-                placeholderTextColor={colors.placeholder}
-                style={styles.situationInput}
-                accessibilityLabel="Situation and goals"
-              />
-              <Text
-                style={[
-                  styles.counter,
-                  situationLen >= SITUATION_MIN ? styles.counterOk : styles.counterMuted,
-                ]}
-              >
-                {situationLen}/{FIELD_MAX}
-              </Text>
-            </Card>
-            {situationLen > 0 && situation.trim().length < SITUATION_MIN ? (
-              <Text style={styles.helper}>At least {SITUATION_MIN} characters.</Text>
-            ) : null}
-          </View>
-        </ScrollView>
-
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <GradientButton
-            label={saving ? 'Saving...' : isEdit ? 'Save' : 'Continue'}
-            onPress={() => {
-              void handleContinue();
-            }}
-            disabled={!canContinue}
-            trailingIcon={
-              saving || isEdit ? undefined : (
-                <Ionicons name="arrow-forward" size={18} color={colors.white} />
-              )
-            }
-          />
-        </View>
-      </KeyboardAvoidingView>
+            <MultilineField
+              value={situation}
+              onChangeText={(value) => setSituation(value.slice(0, FIELD_MAX))}
+              maxLength={FIELD_MAX}
+              minHeight={110}
+              placeholder="Where you are now, what you want next, and any constraints Vetly should know."
+              accessibilityLabel="Situation and goals"
+              hint={
+                situationLen > 0 && situation.trim().length < SITUATION_MIN
+                  ? `At least ${SITUATION_MIN} characters.`
+                  : undefined
+              }
+              counter={
+                <Text
+                  style={[
+                    styles.counter,
+                    situationLen >= SITUATION_MIN ? styles.counterOk : styles.counterMuted,
+                  ]}
+                >
+                  {situationLen}/{FIELD_MAX}
+                </Text>
+              }
+            />
+    </ScreenWrapper>
 
       <Modal
         visible={gradeOpen}
@@ -422,93 +391,78 @@ export default function PremiumOnboardingScreen() {
             accessibilityLabel="Close grade picker"
           />
           <View style={[styles.gradeSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-            <Text style={styles.gradeSheetTitle}>Select your grade</Text>
-            {GRADE_LEVELS.map((level) => {
-              const selected = gradeLevel === level;
-              return (
-                <Pressable
-                  key={level}
-                  onPress={() => {
-                    setGradeLevel(level);
-                    setGradeOpen(false);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  style={({ pressed }) => [
-                    styles.gradeOption,
-                    selected && styles.gradeOptionSelected,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={[styles.gradeOptionLabel, selected && styles.gradeOptionLabelSelected]}>
-                    {level}
-                  </Text>
-                  {selected ? <Ionicons name="checkmark" size={18} color={colors.purple} /> : null}
-                </Pressable>
-              );
-            })}
+            <View style={styles.sheetHandle} />
+            <Text style={styles.gradeSheetTitle} numberOfLines={1} ellipsizeMode="tail">
+              Select your grade
+            </Text>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {GRADE_LEVELS.map((level) => {
+                const selected = gradeLevel === level;
+                return (
+                  <Pressable
+                    key={level}
+                    onPress={() => {
+                      setGradeLevel(level);
+                      setGradeOpen(false);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    style={({ pressed }) => [
+                      styles.gradeOption,
+                      selected && styles.gradeOptionSelected,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.gradeOptionLabel, selected && styles.gradeOptionLabelSelected]}>
+                      {level}
+                    </Text>
+                    {selected ? <Ionicons name="checkmark" size={18} color={colors.purple} /> : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSoft,
-  },
-  flex: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 16,
-  },
-  markSlot: {
-    position: 'absolute',
-    right: 20,
-    justifyContent: 'center',
-  },
   body: {
     paddingHorizontal: 24,
-    paddingTop: 4,
-  },
-  eyebrow: {
-    fontFamily: fonts.semibold,
-    fontSize: 11,
-    lineHeight: 16,
-    letterSpacing: 1.6,
-    color: colors.tabInactive,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
   heading: {
-    marginTop: 8,
     fontFamily: fonts.bold,
-    fontSize: 30,
-    lineHeight: 38,
+    fontSize: 28,
+    lineHeight: 34,
     letterSpacing: -0.4,
     color: colors.textPrimary,
   },
   subheading: {
-    marginTop: 10,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
     fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,
     color: colors.textSecondary,
   },
   fieldHeader: {
-    marginTop: 22,
+    marginTop: 24,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   iconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: colors.purpleTint,
     alignItems: 'center',
     justifyContent: 'center',
@@ -581,51 +535,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.purple,
   },
-  areaCard: {
-    marginTop: 0,
-  },
-  multiInput: {
-    minHeight: 88,
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textPrimary,
-    padding: 0,
-  },
-  situationInput: {
-    minHeight: 110,
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textPrimary,
-    padding: 0,
-  },
   counter: {
-    marginTop: 8,
-    alignSelf: 'flex-end',
     fontFamily: fonts.medium,
     fontSize: 12,
-    color: colors.placeholder,
+    lineHeight: 16,
+    color: colors.muted,
+    fontVariant: ['tabular-nums'],
   },
   counterMuted: {
-    color: colors.textSecondary,
+    color: colors.muted,
   },
   counterOk: {
     color: colors.success,
   },
-  helper: {
-    marginTop: 8,
-    fontFamily: fonts.regular,
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  footer: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    backgroundColor: colors.backgroundSoft,
-  },
   pressed: {
-    opacity: 0.7,
+    opacity: 0.72,
   },
   modalRoot: {
     flex: 1,
@@ -633,17 +557,28 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#1A1D294D',
+    backgroundColor: colors.scrim,
   },
   gradeSheet: {
     backgroundColor: colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderCurve: 'continuous',
     paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingTop: 10,
+    maxHeight: '85%',
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.hairline,
+    marginBottom: 14,
   },
   gradeSheetTitle: {
     marginBottom: 8,
+    paddingHorizontal: 8,
     fontFamily: fonts.semibold,
     fontSize: 16,
     color: colors.textPrimary,

@@ -5,16 +5,19 @@ node_modules/
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 build/
 web-build/
 expo-env.d.ts
 
-# Native (Expo managed, no native folders yet)
+# Native (Expo managed; generate locally with expo run / EAS)
 android/
 ios/
 .kotlin/
 *.orig.*
+
+# Signing, keys, store credentials
 *.jks
 *.keystore
 *.p8
@@ -25,6 +28,15 @@ ios/
 *.mobileprovision
 credentials.json
 service-account.json
+google-services.json
+GoogleService-Info.plist
+
+# Store / installer packages (never commit binaries)
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.app.dSYM.zip
 
 # Metro
 .metro-health-check*
@@ -33,21 +45,42 @@ service-account.json
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.*
 *.log
 
-# macOS
+# OS junk
 .DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editors / IDEs
+.idea/
+.vs/
+*.suo
+*.user
+*.swp
+*.swo
+*~
+*.bak
 
 # local env files (never commit secrets)
 .env
 .env.*
 !.env.example
 
-# scratch scripts / screenshots (never commit)
+# scratch scripts (never commit). Product shots in assets/screenshots/ ARE committed.
 .tmp*
 
 # typescript
 *.tsbuildinfo
+
+# test / coverage
+coverage/
+.nyc_output/
 
 # Local Netlify folder
 .netlify

@@ -4,40 +4,27 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Card } from '@/components/Card';
 import { GradientButton } from '@/components/GradientButton';
 import { colors } from '@/theme/colors';
-import { fonts } from '@/theme/typography';
+import { fonts, type } from '@/theme/typography';
 
 type LockedCardProps = {
   onUnlock: () => void;
 };
 
 /**
- * The premium teaser on Results. Faded placeholder content sits underneath;
- * a lock, a short pitch and an "Unlock" button sit on top.
+ * Honest Premium teaser on Results: what is behind the lock, then a single CTA.
  */
 export function LockedCard({ onUnlock }: LockedCardProps) {
   return (
-    <Card style={styles.card}>
-      {/* Faded "there is content here" placeholder, drawn behind the overlay. */}
-      <View style={styles.ghost} pointerEvents="none" accessibilityElementsHidden>
-        <View style={[styles.ghostBar, styles.ghostHeading]} />
-        <View style={[styles.ghostBar, { width: '92%' }]} />
-        <View style={[styles.ghostBar, { width: '84%' }]} />
-        <View style={[styles.ghostBar, { width: '70%' }]} />
-        <View style={[styles.ghostBar, styles.ghostButton]} />
+    <Card padding={24} style={styles.card}>
+      <View style={styles.lockCircle}>
+        <Ionicons name="lock-closed" size={20} color={colors.purple} />
       </View>
-
-      {/* Overlay with the real call to action. */}
-      <View style={styles.overlay}>
-        <View style={styles.lockCircle}>
-          <Ionicons name="lock-closed" size={22} color={colors.purple} />
-        </View>
-        <Text style={styles.heading}>Preparation Guidance</Text>
-        <Text style={styles.subtext}>
-          How to approach this, what to highlight, and a cover-letter angle.
-        </Text>
-        <View style={styles.buttonWrap}>
-          <GradientButton label="Unlock with Premium" onPress={onUnlock} />
-        </View>
+      <Text style={styles.heading}>Preparation</Text>
+      <Text style={styles.subtext}>
+        How to approach this, what to highlight, and a cover-letter angle — included with Premium.
+      </Text>
+      <View style={styles.buttonWrap}>
+        <GradientButton label="Unlock with Premium" onPress={onUnlock} />
       </View>
     </Card>
   );
@@ -45,40 +32,7 @@ export function LockedCard({ onUnlock }: LockedCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    overflow: 'hidden',
-  },
-  ghost: {
-    // Fills the card behind the overlay; the overlay (in normal flow) sets the card's height.
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    right: 16,
-    opacity: 0.35,
-  },
-  ghostBar: {
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.skeleton,
-    marginBottom: 12,
-  },
-  ghostHeading: {
-    width: '55%',
-    height: 18,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  ghostButton: {
-    width: '100%',
-    height: 44,
-    borderRadius: 14,
-    marginTop: 8,
-    marginBottom: 0,
-  },
-  overlay: {
-    paddingVertical: 12,
-    paddingHorizontal: 4,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   lockCircle: {
     width: 44,
@@ -89,22 +43,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heading: {
-    marginTop: 12,
+    marginTop: 16,
     fontFamily: fonts.bold,
     fontSize: 17,
+    lineHeight: 22,
     color: colors.textPrimary,
     textAlign: 'center',
   },
   subtext: {
-    marginTop: 6,
+    ...type.bodySmall,
+    marginTop: 8,
     fontFamily: fonts.regular,
-    fontSize: 14,
-    lineHeight: 20,
     color: colors.textSecondary,
     textAlign: 'center',
   },
   buttonWrap: {
     width: '100%',
-    marginTop: 16,
+    marginTop: 20,
   },
 });

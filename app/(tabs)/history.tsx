@@ -20,7 +20,7 @@ import { fonts } from '@/theme/typography';
 import { relativeTime } from '@/utils/relativeTime';
 import type { Evaluation } from '@/types/evaluation';
 
-const TAB_BAR_SPACER = 64 + 16;
+const TAB_BAR_SPACER = 24;
 
 // History tab. Free: locked teaser. Premium: on-device list (newest first).
 export default function HistoryScreen() {
@@ -68,12 +68,14 @@ export default function HistoryScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
-      <Text style={[styles.title, { paddingTop: insets.top + 12 }]}>History</Text>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <Text style={styles.title}>History</Text>
+      </View>
 
       {isPremium === null ? (
         <View style={styles.loading}>
           <SoftSkeleton height={72} />
-          <SoftSkeleton height={88} style={styles.loadingGap} />
+          <SoftSkeleton height={88} />
           <SoftSkeleton height={88} />
         </View>
       ) : null}
@@ -86,7 +88,7 @@ export default function HistoryScreen() {
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: TAB_BAR_SPACER }}
+          contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           initialNumToRender={8}
           windowSize={7}
@@ -104,9 +106,9 @@ function LockedState({ onUpgrade }: { onUpgrade: () => void }) {
   return (
     <View style={styles.center}>
       <View style={styles.lockCircle}>
-        <Ionicons name="lock-closed" size={30} color={colors.purple} />
+        <Ionicons name="lock-closed" size={22} color={colors.purple} />
       </View>
-      <Text style={styles.heading}>Your history unlocks with Premium</Text>
+      <Text style={styles.heading}>History unlocks with Premium</Text>
       <Text style={styles.body}>Every evaluation saved, plus how your profile is taking shape.</Text>
       <View style={styles.buttonWrap}>
         <GradientButton label="Upgrade to Premium" onPress={onUpgrade} />
@@ -118,11 +120,10 @@ function LockedState({ onUpgrade }: { onUpgrade: () => void }) {
 function EmptyState() {
   return (
     <View style={styles.center}>
-      <View style={styles.lockCircle}>
-        <Ionicons name="time-outline" size={30} color={colors.purple} />
-      </View>
-      <Text style={styles.heading}>No evaluations yet</Text>
-      <Text style={styles.body}>Analyze an opportunity and it will show up here.</Text>
+      <Text style={styles.heading}>Nothing here yet</Text>
+      <Text style={styles.body}>
+        Evaluate an opportunity from Home and it will show up here with its score and date.
+      </Text>
     </View>
   );
 }
@@ -138,7 +139,7 @@ function PatternCard({ result, thin }: { result: CoherenceResult; thin: boolean 
     <Card radius={16} style={styles.patternCard}>
       <View style={styles.patternHeader}>
         <View style={styles.patternIcon}>
-          <Ionicons name={icon} size={18} color={colors.purple} />
+          <Ionicons name={icon} size={16} color={colors.purple} />
         </View>
         <Text style={styles.patternHeadline}>{result.headline}</Text>
       </View>
@@ -155,21 +156,28 @@ function HistoryRow({
   onPress: () => void;
 }) {
   const tint = colorForScore(evaluation.score);
+  const when = relativeTime(evaluation.createdAt);
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={{ marginBottom: 12 }}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${evaluation.title}, ${evaluation.score} out of 10, ${when}`}
+      style={styles.rowWrap}
+    >
       {({ pressed }) => (
-        <Card style={pressed ? styles.rowPressed : undefined}>
+        <Card radius={16} style={pressed ? styles.rowPressed : undefined}>
           <View style={styles.row}>
             <View style={styles.rowText}>
               <Text style={styles.rowTitle} numberOfLines={1}>
                 {evaluation.title}
               </Text>
               <Text style={styles.rowMeta} numberOfLines={1}>
-                {evaluation.score}/10 · {evaluation.label} · {relativeTime(evaluation.createdAt)}
+                {when}
+                {evaluation.label ? ` · ${evaluation.label}` : ''}
               </Text>
             </View>
             <Text style={[styles.rowScore, { color: tint }]}>{evaluation.score}</Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
+            <Ionicons name="chevron-forward" size={16} color={colors.chevron} />
           </View>
         </Card>
       )}
@@ -182,9 +190,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.backgroundSoft,
   },
+  header: {
+    paddingHorizontal: 20,
+    minHeight: 44,
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
   title: {
-    paddingHorizontal: 24,
-    marginBottom: 12,
     fontFamily: fonts.bold,
     fontSize: 28,
     lineHeight: 36,
@@ -194,8 +206,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 12,
   },
-  loadingGap: {
-    marginTop: 4,
+  list: {
+    paddingHorizontal: 20,
+    paddingBottom: TAB_BAR_SPACER,
   },
   center: {
     flex: 1,
@@ -205,18 +218,18 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
   },
   lockCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.purpleTint,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
   },
   heading: {
-    marginTop: 20,
-    fontFamily: fonts.bold,
-    fontSize: 20,
-    lineHeight: 26,
+    fontFamily: fonts.semibold,
+    fontSize: 18,
+    lineHeight: 24,
     color: colors.textPrimary,
     textAlign: 'center',
   },
@@ -227,6 +240,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.textSecondary,
     textAlign: 'center',
+    maxWidth: 320,
   },
   buttonWrap: {
     marginTop: 24,
@@ -242,9 +256,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   patternIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    borderCurve: 'continuous',
     backgroundColor: colors.purpleTint,
     alignItems: 'center',
     justifyContent: 'center',
@@ -252,42 +267,52 @@ const styles = StyleSheet.create({
   patternHeadline: {
     flex: 1,
     fontFamily: fonts.semibold,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 21,
     color: colors.textPrimary,
   },
   patternDetail: {
-    marginTop: 10,
+    marginTop: 8,
     fontFamily: fonts.regular,
     fontSize: 14,
     lineHeight: 20,
     color: colors.textSecondary,
   },
+  rowWrap: {
+    marginBottom: 10,
+  },
+  rowPressed: {
+    backgroundColor: colors.backgroundSoft,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  rowPressed: {
-    opacity: 0.7,
+    minHeight: 44,
+    gap: 8,
   },
   rowText: {
     flex: 1,
-    marginRight: 8,
+    minWidth: 0,
   },
   rowTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 15,
+    fontSize: 16,
+    lineHeight: 22,
     color: colors.textPrimary,
   },
   rowMeta: {
-    marginTop: 4,
+    marginTop: 2,
     fontFamily: fonts.regular,
-    fontSize: 12,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.textSecondary,
   },
   rowScore: {
     fontFamily: fonts.bold,
     fontSize: 18,
-    marginRight: 4,
+    lineHeight: 22,
+    fontVariant: ['tabular-nums'],
+    minWidth: 22,
+    textAlign: 'right',
   },
 });

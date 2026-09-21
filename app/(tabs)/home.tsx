@@ -1,12 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/Card';
 import { GradientButton } from '@/components/GradientButton';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { SoftSkeleton } from '@/components/SoftSkeleton';
 import { VMark } from '@/components/VMark';
 import { fetchRemoteEvaluations } from '@/services/evaluationCloud';
@@ -16,11 +15,11 @@ import { getHistory, mergeRemoteHistory } from '@/storage/historyStorage';
 import { getIsPremium } from '@/storage/premiumStorage';
 import { setCurrentEvaluation } from '@/store/evaluationStore';
 import { colors } from '@/theme/colors';
-import { fonts } from '@/theme/typography';
+import { fonts, type } from '@/theme/typography';
 import { relativeTime } from '@/utils/relativeTime';
 import type { Evaluation } from '@/types/evaluation';
 
-const TAB_BAR_SPACER = 64 + 16;
+const TAB_BAR_SPACER = 24;
 
 function timeOfDayGreeting(): 'Good morning' | 'Good afternoon' | 'Good evening' {
   const hour = new Date().getHours();
@@ -32,12 +31,13 @@ function timeOfDayGreeting(): 'Good morning' | 'Good afternoon' | 'Good evening'
 // Dashboard Home. Evaluate lives on the stack at /evaluate so this tab can stay a hub.
 export default function HomeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const greeting = timeOfDayGreeting();
 
+  const [hydrated, setHydrated] = useState(false);
   const [firstName, setFirstName] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [recent, setRecent] = useState<Evaluation[]>([]);
+  const [recentReady, setRecentReady] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -52,12 +52,25 @@ export default function HomeScreen() {
         if (cancelled) return;
         setIsPremium(premium);
         setFirstName(signedIn && account ? firstNameOf(account.name) : null);
-        setRecent(premium ? history.slice(0, 3) : []);
-        if (!premium) return;
+        setHydrated(true);
+        if (!premium) {
+          setRecent([]);
+          setRecentReady(true);
+          return;
+        }
+        setRecent(history.slice(0, 3));
+        if (history.length > 0) setRecentReady(true);
+        else setRecentReady(false);
         const remote = await fetchRemoteEvaluations();
-        if (cancelled || !remote) return;
+        if (cancelled || !remote) {
+          if (!cancelled) setRecentReady(true);
+          return;
+        }
         const merged = await mergeRemoteHistory(remote);
-        if (!cancelled) setRecent(merged.slice(0, 3));
+        if (!cancelled) {
+          setRecent(merged.slice(0, 3));
+          setRecentReady(true);
+        }
       })();
       return () => {
         cancelled = true;
@@ -70,110 +83,100 @@ export default function HomeScreen() {
     router.push('/results');
   };
 
+  const showRecentSkeleton = isPremium === null || (isPremium === true && !recentReady);
+
   return (
-    <View style={styles.screen}>
-      <StatusBar style="dark" />
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + 12, paddingBottom: TAB_BAR_SPACER },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.headerRow}>
-          <VMark size={28} />
+    <ScreenWrapper
+      contentContainerStyle={[styles.content, { paddingBottom: TAB_BAR_SPACER }]}
+    >
+      <View style={styles.headerRow}>
+        <VMark size={28} />
+        <View style={styles.headerActions}>
+          {isPremium === false ? (
+            <Pressable
+              onPress={() => router.push('/paywall')}
+              accessibilityRole="button"
+              accessibilityLabel="Upgrade"
+              hitSlop={8}
+              style={({ pressed }) => [styles.upgradeChip, pressed && styles.pressed]}
+            >
+              <Text style={styles.upgradeChipLabel}>Upgrade</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => router.push('/settings')}
-            hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel="Settings"
-            style={({ pressed }) => pressed && styles.pressed}
+            style={({ pressed }) => [styles.settingsBtn, pressed && styles.pressed]}
           >
-            <Ionicons name="settings-outline" size={24} color={colors.textPrimary} />
+            <Ionicons name="settings-outline" size={22} color={colors.textPrimary} />
           </Pressable>
         </View>
+      </View>
 
-        {firstName ? (
-          <Text style={styles.hi}>
-            {greeting}, {firstName}.
-          </Text>
-        ) : null}
-        <Text style={[styles.greeting, firstName ? styles.greetingAfterHi : null]}>
-          Know before you go.
-        </Text>
+      <View style={styles.hero}>
+        {!hydrated ? (
+          <SoftSkeleton height={36} style={styles.greetingSkeleton} />
+        ) : (
+          <>
+            {firstName ? (
+              <Text style={styles.hi}>
+                {greeting}, {firstName}.
+              </Text>
+            ) : null}
+            <Text style={[styles.headline, firstName ? styles.headlineAfterHi : null]}>
+              Know before you go.
+            </Text>
+          </>
+        )}
+      </View>
 
-        <View style={styles.actions}>
-          <QuickAction
-            icon="sparkles-outline"
-            title="Evaluate opportunity"
-            subtitle="Paste a listing and see if it fits your goal"
-            onPress={() => router.push('/evaluate')}
-          />
-          <QuickAction
-            icon="person-outline"
-            title="Your profile"
-            subtitle="Goal, activities, and the story you are building"
-            onPress={() => router.navigate('/(tabs)/profile')}
-          />
-        </View>
+      <View style={styles.primary}>
+        <GradientButton
+          label="Evaluate an opportunity"
+          onPress={() => router.push('/evaluate')}
+        />
+        <Text style={styles.ctaHint}>Paste a listing and see if it fits your goal.</Text>
+      </View>
 
+      <Pressable
+        onPress={() => router.navigate('/(tabs)/profile')}
+        accessibilityRole="button"
+        accessibilityLabel="Your profile"
+        style={({ pressed }) => [styles.profileLink, pressed && styles.pressed]}
+      >
+        <Text style={styles.profileLinkText}>Your profile</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
+      </Pressable>
+
+      <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionHeading}>Recent evaluations</Text>
-        {isPremium === null ? <SoftSkeleton height={96} /> : null}
-        {isPremium === true && recent.length > 0
-          ? recent.map((item) => (
-              <RecentRow key={item.id} evaluation={item} onPress={() => openEvaluation(item)} />
-            ))
-          : null}
-        {isPremium === true && recent.length === 0 ? (
-          <Card radius={16} padding={20}>
-            <Text style={styles.emptyRecent}>Analyze an opportunity and it will show up here.</Text>
-          </Card>
-        ) : null}
-        {isPremium === false ? (
-          <Card radius={16} padding={20} style={styles.lockedCard}>
-            <View style={styles.lockedRow}>
-              <View style={styles.lockCircle}>
-                <Ionicons name="lock-closed" size={18} color={colors.purple} />
-              </View>
-              <Text style={styles.lockedCopy}>History unlocks with Premium.</Text>
-            </View>
-            <GradientButton label="Upgrade" onPress={() => router.push('/paywall')} />
-          </Card>
-        ) : null}
-      </ScrollView>
-    </View>
-  );
-}
-
-function QuickAction({
-  icon,
-  title,
-  subtitle,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={title}>
-      {({ pressed }) => (
-        <Card radius={18} style={pressed ? styles.actionPressed : undefined}>
-          <View style={styles.actionRow}>
-            <View style={styles.actionIcon}>
-              <Ionicons name={icon} size={22} color={colors.purple} />
-            </View>
-            <View style={styles.actionText}>
-              <Text style={styles.actionTitle}>{title}</Text>
-              <Text style={styles.actionSubtitle}>{subtitle}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
-          </View>
+      </View>
+      {showRecentSkeleton ? (
+        <View style={styles.skeletonStack}>
+          <SoftSkeleton height={88} />
+          <SoftSkeleton height={88} />
+        </View>
+      ) : null}
+      {isPremium === true && recentReady && recent.length > 0 ? (
+        <View style={styles.recentList}>
+          {recent.map((item) => (
+            <RecentRow key={item.id} evaluation={item} onPress={() => openEvaluation(item)} />
+          ))}
+        </View>
+      ) : null}
+      {isPremium === true && recentReady && recent.length === 0 ? (
+        <Card radius={20} padding={24}>
+          <Text style={styles.emptyTitle}>Nothing here yet</Text>
+          <Text style={styles.emptyBody}>
+            Evaluate an opportunity and it will show up here.
+          </Text>
         </Card>
-      )}
-    </Pressable>
+      ) : null}
+      {isPremium === false ? (
+        <Text style={styles.lockedQuiet}>History on Premium</Text>
+      ) : null}
+    </ScreenWrapper>
   );
 }
 
@@ -186,11 +189,11 @@ function RecentRow({
 }) {
   const tint = colorForScore(evaluation.score);
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={styles.recentWrap}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={evaluation.title}>
       {({ pressed }) => (
-        <Card radius={16} style={pressed ? styles.actionPressed : undefined}>
+        <Card radius={16} style={pressed ? styles.rowPressed : undefined}>
           <View style={styles.recentRow}>
-            <View style={styles.actionText}>
+            <View style={styles.recentText}>
               <Text style={styles.recentTitle} numberOfLines={1}>
                 {evaluation.title}
               </Text>
@@ -208,136 +211,157 @@ function RecentRow({
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSoft,
-  },
-  flex: {
-    flex: 1,
-  },
   content: {
     paddingHorizontal: 20,
+    paddingTop: 4,
   },
   headerRow: {
-    height: 40,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  upgradeChip: {
+    minHeight: 32,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.purpleTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeChipLabel: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.purple,
+  },
+  settingsBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pressed: {
     opacity: 0.6,
   },
-  hi: {
-    marginTop: 16,
-    fontFamily: fonts.semibold,
-    fontSize: 15,
-    color: colors.purple,
-  },
-  greeting: {
+  hero: {
     marginTop: 20,
-    fontFamily: fonts.bold,
-    fontSize: 28,
-    lineHeight: 36,
-    color: colors.textPrimary,
+    minHeight: 56,
   },
-  greetingAfterHi: {
-    marginTop: 6,
+  greetingSkeleton: {
+    width: '62%',
   },
-  actions: {
-    marginTop: 24,
-    gap: 12,
-  },
-  actionPressed: {
-    opacity: 0.85,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.purpleTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  actionText: {
-    flex: 1,
-    marginRight: 8,
-  },
-  actionTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  actionSubtitle: {
-    marginTop: 4,
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.textSecondary,
-  },
-  sectionHeading: {
-    marginTop: 28,
-    marginBottom: 12,
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: colors.textSecondary,
-  },
-  emptyRecent: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textSecondary,
-  },
-  lockedCard: {
-    gap: 16,
-  },
-  lockedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  lockCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.purpleTint,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lockedCopy: {
-    flex: 1,
+  hi: {
     fontFamily: fonts.medium,
     fontSize: 15,
     lineHeight: 20,
+    color: colors.textSecondary,
+  },
+  headline: {
+    ...type.h2,
+    fontFamily: fonts.bold,
     color: colors.textPrimary,
   },
-  recentWrap: {
-    marginBottom: 12,
+  headlineAfterHi: {
+    marginTop: 6,
   },
-  recentRow: {
+  primary: {
+    marginTop: 28,
+  },
+  ctaHint: {
+    ...type.bodySmall,
+    marginTop: 12,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  profileLink: {
+    marginTop: 8,
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 10,
+  },
+  profileLinkText: {
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    lineHeight: 20,
+    color: colors.textSecondary,
+  },
+  sectionHeaderRow: {
+    marginTop: 28,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionHeading: {
+    ...type.label,
+    fontFamily: fonts.semibold,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  lockedQuiet: {
+    ...type.bodySmall,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+  },
+  skeletonStack: {
+    gap: 12,
+  },
+  recentList: {
+    gap: 12,
+  },
+  emptyTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 16,
+    lineHeight: 22,
+    color: colors.textPrimary,
+  },
+  emptyBody: {
+    ...type.bodySmall,
+    marginTop: 6,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+  },
+  rowPressed: {
+    opacity: 0.85,
+  },
+  recentRow: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recentText: {
+    flex: 1,
+    marginRight: 12,
   },
   recentTitle: {
     fontFamily: fonts.semibold,
     fontSize: 15,
+    lineHeight: 20,
     color: colors.textPrimary,
   },
   recentMeta: {
+    ...type.caption,
     marginTop: 4,
     fontFamily: fonts.regular,
-    fontSize: 12,
     color: colors.textSecondary,
+    fontVariant: ['tabular-nums'],
   },
   recentScore: {
     fontFamily: fonts.bold,
     fontSize: 18,
-    marginRight: 4,
+    lineHeight: 22,
+    marginRight: 6,
+    fontVariant: ['tabular-nums'],
   },
 });
