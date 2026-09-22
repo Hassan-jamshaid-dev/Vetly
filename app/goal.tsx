@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
+import { InteractionManager, Keyboard, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { MultilineField } from '@/components/MultilineField';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
@@ -25,9 +25,8 @@ const FREE_MAX_CHARS = 1000;
 const PLACEHOLDER_TEXT =
   'Example: I am a Grade 11 student aiming for top universities like Waterloo and MIT. I want to study Computer Engineering and eventually found a tech startup. Right now I am building my profile through extracurriculars and self-learning programming and AI. I care more about shipping projects I can show than collecting certificates, and I want to know which opportunities actually move that story forward.';
 
-// Screen 3: Goal. The user describes who they are and what they are aiming for.
-// Vetly evaluates every opportunity against this text.
-// Also used as "Edit your goal" (from Settings) via /goal?mode=edit.
+// Screen 3: Goal. Free onboarding + "Edit your goal" (Profile / Settings).
+// Free: 300–1000 characters. Premium: 20–2000 words. Not premium-onboarding.
 export default function GoalScreen() {
   const router = useRouter();
   const resetToHome = useResetToHome();
@@ -61,10 +60,12 @@ export default function GoalScreen() {
     }, []),
   );
 
-  // Open the IME after Get Started without waiting for a tap. Run after
-  // interactions so the splash / onboarding fade is not fighting focus.
+  // Native only: delayed programmatic focus after Get Started. On web that
+  // focus() runs outside the user-gesture window, so the IME never opens and
+  // the next tap looks "dead". Web relies on a real tap on the textarea.
   useFocusEffect(
     useCallback(() => {
+      if (Platform.OS === 'web') return;
       let cancelled = false;
       const task = InteractionManager.runAfterInteractions(() => {
         requestAnimationFrame(() => {
@@ -78,10 +79,10 @@ export default function GoalScreen() {
     }, []),
   );
 
-  // Load the saved goal only after the Premium cap is known, so TextInput
-  // maxLength cannot clip a long Premium goal down to the free 1000-character cap.
+  // Prefill after the Premium cap is known so maxLength cannot clip a long
+  // Premium goal. Also prefill on first-run when a goal was kept across launches.
   useEffect(() => {
-    if (!isEdit || !tierReady) return;
+    if (!tierReady) return;
     let cancelled = false;
     getGoal().then((saved) => {
       if (!cancelled && saved) setText(saved);
@@ -89,7 +90,7 @@ export default function GoalScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isEdit, tierReady]);
+  }, [tierReady]);
 
   const words = useMemo(() => countWords(text), [text]);
   const chars = text.length;
@@ -128,7 +129,7 @@ export default function GoalScreen() {
       return;
     }
     if (isEdit) {
-      router.replace('/settings');
+      router.replace('/(tabs)/profile');
       return;
     }
     router.replace('/onboarding');
@@ -156,7 +157,7 @@ export default function GoalScreen() {
       await setGoal(trimmed);
       if (isEdit) {
         if (router.canGoBack()) router.back();
-        else router.replace('/settings');
+        else router.replace('/(tabs)/profile');
       } else {
         resetToHome();
       }

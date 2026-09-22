@@ -1,12 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/Card';
 import { GradientButton } from '@/components/GradientButton';
+import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { SoftSkeleton } from '@/components/SoftSkeleton';
 import { getAccount, getIsSignedIn, type Account } from '@/storage/authStorage';
 import { getGoal } from '@/storage/goalStorage';
@@ -20,7 +19,6 @@ import { colors } from '@/theme/colors';
 import { fonts } from '@/theme/typography';
 
 const TAB_BAR_SPACER = 24;
-const GOAL_PREVIEW = 120;
 
 function activityLines(raw: string): string[] {
   const trimmed = raw.trim();
@@ -32,16 +30,15 @@ function activityLines(raw: string): string[] {
   return [trimmed];
 }
 
-function previewGoal(goal: string | null): string {
-  if (!goal) return '';
-  if (goal.length <= GOAL_PREVIEW) return goal;
-  return `${goal.slice(0, GOAL_PREVIEW).trimEnd()}…`;
+function displayGoal(raw: string | null): string | null {
+  if (!raw) return null;
+  const normalized = raw.replace(/\s+/g, ' ').trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 // Profile tab: the person page. Settings live on /settings (gear).
 export default function ProfileScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [account, setAccount] = useState<Account | null>(null);
   const [profile, setProfileState] = useState<StudentProfile | null>(null);
   const [goal, setGoalState] = useState<string | null>(null);
@@ -75,17 +72,8 @@ export default function ProfileScreen() {
   const showFull = Boolean(account) || hasProfileContent(profile);
 
   return (
-    <View style={styles.screen}>
-      <StatusBar style="dark" />
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={{
-          paddingTop: insets.top + 12,
-          paddingBottom: TAB_BAR_SPACER,
-          paddingHorizontal: 20,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
+    <ScreenWrapper
+      chrome={
         <View style={styles.headerRow}>
           <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
             Profile
@@ -99,31 +87,38 @@ export default function ProfileScreen() {
             <Ionicons name="settings-outline" size={22} color={colors.textPrimary} />
           </Pressable>
         </View>
-
-        {!ready ? (
-          <View style={styles.loading}>
-            <SoftSkeleton height={120} />
-            <SoftSkeleton height={88} />
-            <SoftSkeleton height={88} />
-          </View>
-        ) : showFull ? (
-          <FullProfile
-            account={account}
-            profile={profile}
-            goal={goal}
-            isPremium={isPremium}
-            onEdit={() => router.push({ pathname: '/premium-onboarding', params: { mode: 'edit' } })}
-            onResume={() => router.push({ pathname: '/resume', params: { mode: 'edit' } })}
-          />
-        ) : (
-          <GuestProfile
-            goal={goal}
-            onEditGoal={() => router.push({ pathname: '/goal', params: { mode: 'edit' } })}
-            onLogin={() => router.push('/signup')}
-          />
-        )}
-      </ScrollView>
-    </View>
+      }
+      contentContainerStyle={styles.content}
+    >
+      {!ready ? (
+        <View style={styles.loading}>
+          <SoftSkeleton height={120} />
+          <SoftSkeleton height={88} />
+          <SoftSkeleton height={88} />
+        </View>
+      ) : showFull ? (
+        <FullProfile
+          account={account}
+          profile={profile}
+          goal={goal}
+          isPremium={isPremium}
+          onEdit={() =>
+            router.push(
+              isPremium
+                ? { pathname: '/premium-onboarding', params: { mode: 'edit' } }
+                : { pathname: '/goal', params: { mode: 'edit' } },
+            )
+          }
+          onResume={() => router.push({ pathname: '/resume', params: { mode: 'edit' } })}
+        />
+      ) : (
+        <GuestProfile
+          goal={goal}
+          onEditGoal={() => router.push({ pathname: '/goal', params: { mode: 'edit' } })}
+          onLogin={() => router.push('/signup')}
+        />
+      )}
+    </ScreenWrapper>
   );
 }
 
@@ -151,7 +146,7 @@ function FullProfile({
     ...(profile?.dreamCareer.trim() ? [profile.dreamCareer.trim()] : []),
   ];
   const activities = activityLines(profile?.activities ?? '');
-  const goalPreview = previewGoal(goal ?? profile?.situation ?? null);
+  const goalDisplay = displayGoal(goal ?? profile?.situation ?? null);
   const resumeName = profile?.resumeName?.trim() || null;
 
   return (
@@ -162,13 +157,13 @@ function FullProfile({
         </View>
         <Text style={styles.name}>{displayName}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
-        <Pressable
+          <Pressable
           onPress={onEdit}
           accessibilityRole="button"
-          accessibilityLabel="Edit profile"
+          accessibilityLabel={isPremium ? 'Edit profile' : 'Edit your goal'}
           style={({ pressed }) => [styles.editPill, pressed && styles.pressed]}
         >
-          <Text style={styles.editPillLabel}>Edit profile</Text>
+          <Text style={styles.editPillLabel}>{isPremium ? 'Edit profile' : 'Edit your goal'}</Text>
         </Pressable>
       </View>
 
@@ -182,12 +177,18 @@ function FullProfile({
         </View>
       ) : null}
 
-      {goalPreview ? (
-        <Card radius={16} style={styles.block}>
-          <Text style={styles.cardLabel}>Goal</Text>
-          <Text style={styles.goalText}>{goalPreview}</Text>
-        </Card>
-      ) : null}
+      <Card radius={16} style={styles.block}>
+        <Text style={styles.cardLabel}>Goal</Text>
+        {goalDisplay ? (
+          <Text style={styles.goalText} numberOfLines={4} ellipsizeMode="tail">
+            {goalDisplay}
+          </Text>
+        ) : (
+          <Text style={styles.goalEmpty}>
+            Add a short goal so evaluations have something to work with.
+          </Text>
+        )}
+      </Card>
 
       {activities.length > 0 ? (
         <Card radius={16} style={styles.block}>
@@ -257,15 +258,21 @@ function GuestProfile({
   onEditGoal: () => void;
   onLogin: () => void;
 }) {
-  const preview = previewGoal(goal);
+  const preview = displayGoal(goal);
 
   return (
     <View style={styles.stack}>
       <Card radius={16} style={styles.block}>
         <Text style={styles.cardLabel}>Your goal</Text>
-        <Text style={styles.goalText}>
-          {preview || 'Write a short goal so Vetly can evaluate opportunities for you.'}
-        </Text>
+        {preview ? (
+          <Text style={styles.goalText} numberOfLines={4} ellipsizeMode="tail">
+            {preview}
+          </Text>
+        ) : (
+          <Text style={styles.goalEmpty}>
+            Write a short goal so Vetly can evaluate opportunities for you.
+          </Text>
+        )}
       </Card>
       <View style={styles.guestActions}>
         <GradientButton label="Edit your goal" onPress={onEditGoal} />
@@ -283,15 +290,13 @@ function GuestProfile({
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.backgroundSoft,
-  },
-  flex: {
-    flex: 1,
+  content: {
+    paddingHorizontal: 20,
+    paddingBottom: TAB_BAR_SPACER,
   },
   headerRow: {
     minHeight: 44,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -403,6 +408,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: colors.textPrimary,
+    flexShrink: 1,
+    maxWidth: '100%',
+    overflow: 'hidden',
+  },
+  goalEmpty: {
+    marginTop: 6,
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textSecondary,
   },
   activityRow: {
     marginTop: 10,

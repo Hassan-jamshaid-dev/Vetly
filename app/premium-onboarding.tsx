@@ -217,7 +217,7 @@ export default function PremiumOnboardingScreen() {
     <ScreenWrapper
       keyboard
       onBack={goBack}
-      headerRight={<VMark size={34} />}
+      headerRight={<VMark size={22} />}
       background={<ProfileDecor width={width} height={height} />}
       contentContainerStyle={styles.body}
       footer={
@@ -237,8 +237,9 @@ export default function PremiumOnboardingScreen() {
     >
           <Text style={styles.heading}>{isEdit ? 'Update your profile' : 'Tell us about you'}</Text>
           <Text style={styles.subheading}>
-            Grade, career, and situation — one step at a time. Premium uses this when it
-            evaluates opportunities for you.
+            {isEdit
+              ? 'Grade, career, and situation used when Vetly evaluates opportunities for you.'
+              : 'Grade, career, and situation — one step at a time. Premium uses this when it evaluates opportunities for you.'}
           </Text>
 
             <FieldHeader

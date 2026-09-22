@@ -15,12 +15,12 @@ type ScreenHeaderProps = {
   right?: ReactNode;
 };
 
-const HEADER_HEIGHT = 56;
-const SIDE = 48;
+const HEADER_HEIGHT = 52;
+const SIDE = 44;
 
 /**
  * Header row with a back slot, a centred single-line title, and a matching
- * right slot so the title never collides with the chevron.
+ * right slot so the logo never collides with the chevron.
  * Safe-area inset belongs on ScreenWrapper, not here — avoids a second nav.
  */
 export function ScreenHeader({ onBack, title, right }: ScreenHeaderProps) {
@@ -30,12 +30,12 @@ export function ScreenHeader({ onBack, title, right }: ScreenHeaderProps) {
         {onBack ? (
           <Pressable
             onPress={onBack}
-            hitSlop={12}
+            hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Go back"
             style={({ pressed }) => [styles.back, pressed && styles.pressed]}
           >
-            <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
+            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
           </Pressable>
         ) : null}
       </View>
@@ -54,14 +54,18 @@ const styles = StyleSheet.create({
     minHeight: HEADER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    gap: spacing.sm,
   },
   side: {
     width: SIDE,
-    minHeight: HEADER_HEIGHT,
+    minWidth: SIDE,
+    maxWidth: SIDE,
+    height: HEADER_HEIGHT,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   back: {
     width: SIDE,
@@ -75,7 +79,8 @@ const styles = StyleSheet.create({
   title: {
     ...type.button,
     flex: 1,
-    paddingHorizontal: spacing.sm,
+    minWidth: 0,
+    paddingHorizontal: spacing.xs,
     textAlign: 'center',
     color: colors.textPrimary,
   },

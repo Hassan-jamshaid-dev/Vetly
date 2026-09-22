@@ -1,6 +1,11 @@
 /**
  * Demo-video launch behaviour.
  *
+ * DEMO_ALWAYS_SHOW_ONBOARDING = true  (TEMPORARY — demo / recording)
+ *   Every cold start / reload: Splash → Get Started → free goal onboarding.
+ *   Does NOT wipe a saved goal, Premium, or history. Flip back to false to
+ *   restore skip-to-Home when a goal is already saved.
+ *
  * DEMO_FORCE_FIRST_RUN = true
  *   Every cold start / reload:
  *   - Resets the demo session: signed out, not Premium, daily usage 0/3,
@@ -12,8 +17,13 @@
  *   Expo Go keeps the simulated flag cleared.
  *   Flip back to true only for a recording; do not commit true.
  *
- * DEMO_FORCE_FIRST_RUN = false  (current — product default)
- *   Splash skips to Home when a goal is already saved.
+ * DEMO_FORCE_FIRST_RUN = false  (product default)
+ *   Splash skips to Home when a goal is already saved — unless
+ *   DEMO_ALWAYS_SHOW_ONBOARDING is on.
  *   Sign-in, Premium, usage, history, and goal persist across launches.
  */
-export const DEMO_FORCE_FIRST_RUN = false;
+/** TEMPORARY for demo/recording. Set false to persist the session and skip onboarding. */
+export const DEMO_FORCE_FIRST_RUN = true;
+
+/** TEMPORARY for demo/recording. Set false to skip onboarding when a goal exists. */
+export const DEMO_ALWAYS_SHOW_ONBOARDING = true;

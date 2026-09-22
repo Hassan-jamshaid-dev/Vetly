@@ -1,5 +1,12 @@
 import { forwardRef, useRef, type ReactNode } from 'react';
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+} from 'react-native';
 
 import { Card } from '@/components/Card';
 import { colors } from '@/theme/colors';
@@ -9,15 +16,16 @@ import { type } from '@/theme/typography';
 
 type MultilineFieldProps = Omit<TextInputProps, 'multiline' | 'style'> & {
   minHeight?: number;
-  /** Muted hint on the left, below the box (e.g. "At least 300 characters"). */
+  /** Hint on the left, below the box (e.g. "At least 300 characters"). */
   hint?: ReactNode;
-  /** Muted counter on the right, below the box (e.g. "0/2000"). */
+  /** Counter on the right, below the box (e.g. "0/2000"). */
   counter?: ReactNode;
 };
 
 /**
- * Multiline input with inner padding. Counter/hint sit in a row under the box
- * so they never overlap the field border.
+ * Multiline input that fills its card so the first tap hits the native field
+ * (web textarea / iOS / Android IME). Do not wrap this in a Pressable — parent
+ * press handlers steal focus and the keyboard never opens.
  */
 export const MultilineField = forwardRef<TextInput, MultilineFieldProps>(
   function MultilineField(
@@ -37,6 +45,10 @@ export const MultilineField = forwardRef<TextInput, MultilineFieldProps>(
   ) {
     const fieldHeight = Math.max(minHeight, 44);
     const localRef = useRef<TextInput>(null);
+    const webFieldStyle =
+      Platform.OS === 'web'
+        ? ({ outlineWidth: 0 } satisfies { outlineWidth: number })
+        : null;
 
     const setRef = (node: TextInput | null) => {
       localRef.current = node;
@@ -47,42 +59,24 @@ export const MultilineField = forwardRef<TextInput, MultilineFieldProps>(
       }
     };
 
-    const focusInput = () => {
-      if (editable === false) return;
-      const input = localRef.current;
-      if (input && !input.isFocused()) {
-        input.focus();
-      }
-    };
-
     return (
-      <View collapsable={false}>
-        <View
-          collapsable={false}
-          // Empty Android multiline EditText can layout a 1-line native hit
-          // target inside a taller box. Focus on the box so one tap opens IME
-          // without a wrapping Pressable (those steal the first tap).
-          onTouchStart={focusInput}
-        >
-          <Card radius={radius.xl} padding={0} style={styles.surface}>
-            <TextInput
-              ref={setRef}
-              placeholderTextColor={placeholderTextColor}
-              underlineColorAndroid="transparent"
-              {...inputProps}
-              editable={editable}
-              caretHidden={caretHidden}
-              showSoftInputOnFocus={showSoftInputOnFocus}
-              multiline
-              textAlignVertical={textAlignVertical}
-              onPressIn={(event) => {
-                focusInput();
-                onPressIn?.(event);
-              }}
-              style={[styles.input, { minHeight: fieldHeight }]}
-            />
-          </Card>
-        </View>
+      <View collapsable={false} style={styles.wrap}>
+        <Card radius={radius.xl} padding={0} style={styles.surface}>
+          <TextInput
+            ref={setRef}
+            placeholderTextColor={placeholderTextColor}
+            underlineColorAndroid="transparent"
+            {...inputProps}
+            editable={editable}
+            caretHidden={caretHidden}
+            showSoftInputOnFocus={showSoftInputOnFocus}
+            multiline
+            blurOnSubmit={false}
+            textAlignVertical={textAlignVertical}
+            onPressIn={onPressIn}
+            style={[styles.input, { minHeight: fieldHeight }, webFieldStyle]}
+          />
+        </Card>
         {hint != null || counter != null ? (
           <View style={styles.meta}>
             <View style={styles.hintSlot}>
@@ -107,11 +101,17 @@ export const MultilineField = forwardRef<TextInput, MultilineFieldProps>(
 MultilineField.displayName = 'MultilineField';
 
 const styles = StyleSheet.create({
+  wrap: {
+    width: '100%',
+  },
   surface: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.hairline,
+    overflow: 'hidden',
+    width: '100%',
   },
   input: {
+    width: '100%',
     fontFamily: type.body.fontFamily,
     fontSize: type.body.fontSize,
     lineHeight: type.body.lineHeight,
@@ -123,10 +123,12 @@ const styles = StyleSheet.create({
   },
   meta: {
     marginTop: spacing.md,
+    marginBottom: spacing.sm,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.xs,
   },
   hintSlot: {
     flex: 1,
@@ -134,10 +136,13 @@ const styles = StyleSheet.create({
   },
   metaText: {
     ...type.caption,
-    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textPrimary,
     fontVariant: ['tabular-nums'],
   },
   counter: {
     textAlign: 'right',
+    color: colors.textPrimary,
   },
 });

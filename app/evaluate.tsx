@@ -10,13 +10,12 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
   type ScrollView,
 } from 'react-native';
 
-import { Card } from '@/components/Card';
 import { ExampleCard } from '@/components/ExampleCard';
+import { MultilineField } from '@/components/MultilineField';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { StickyBottomButton } from '@/components/StickyBottomButton';
 import { evaluateOpportunity } from '@/services/evaluation';
@@ -215,29 +214,29 @@ export default function EvaluateScreen() {
         </StickyBottomButton>
       }
     >
-      <Pressable onPress={Keyboard.dismiss} accessible={false}>
+      <View>
         <Text style={styles.headline}>What are you considering?</Text>
 
         <Text style={styles.fieldLabel}>Opportunity</Text>
-        <Card radius={20} padding={0}>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            multiline
-            maxLength={MAX_CHARS}
-            textAlignVertical="top"
-            placeholder={INPUT_PLACEHOLDER}
-            placeholderTextColor={colors.placeholder}
-            style={styles.input}
-            editable={!isAnalyzing}
-            accessibilityLabel="Opportunity description"
-          />
-        </Card>
-        <View style={styles.counterRow}>
-          <Text style={styles.charCounter}>
-            {text.length} / {MAX_CHARS}
-          </Text>
-        </View>
+        <MultilineField
+          value={text}
+          onChangeText={setText}
+          maxLength={MAX_CHARS}
+          minHeight={148}
+          placeholder={INPUT_PLACEHOLDER}
+          editable={!isAnalyzing}
+          accessibilityLabel="Opportunity description"
+          onFocus={() => {
+            requestAnimationFrame(() => {
+              scrollRef.current?.scrollTo({ y: 0, animated: true });
+            });
+          }}
+          counter={
+            <Text style={styles.charCounter}>
+              {text.length} / {MAX_CHARS}
+            </Text>
+          }
+        />
 
         <View style={styles.uploadRow}>
           <Pressable
@@ -279,7 +278,7 @@ export default function EvaluateScreen() {
             />
           ))}
         </View>
-      </Pressable>
+      </View>
     </ScreenWrapper>
   );
 }
@@ -305,23 +304,11 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semibold,
     letterSpacing: 0.4,
   },
-  input: {
-    ...type.body,
-    minHeight: 148,
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 16,
-    includeFontPadding: false,
-  },
-  counterRow: {
-    marginTop: 8,
-    paddingHorizontal: 4,
-    alignItems: 'flex-end',
-  },
   charCounter: {
-    ...type.caption,
     fontFamily: fonts.medium,
-    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textPrimary,
     fontVariant: ['tabular-nums'],
     includeFontPadding: false,
   },

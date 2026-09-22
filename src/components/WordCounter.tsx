@@ -20,7 +20,7 @@ export function countWords(text: string): number {
 /** "n / max words" in grey, green when inside the allowed range, red when over. */
 export function WordCounter({ count, min, max }: WordCounterProps) {
   const color =
-    count > max ? colors.danger : count >= min ? colors.success : colors.muted;
+    count > max ? colors.danger : count >= min ? colors.success : colors.textPrimary;
 
   return (
     <Text style={[styles.text, { color }]}>

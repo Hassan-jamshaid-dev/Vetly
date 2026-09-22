@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // The user's chosen goal is saved on-device. Splash uses getGoal() to skip
-// onboarding for returning users — unless DEMO_FORCE_FIRST_RUN is on.
+// onboarding for returning users — unless DEMO_ALWAYS_SHOW_ONBOARDING (temporary
+// demo/recording, keeps the saved goal) or DEMO_FORCE_FIRST_RUN (full reset) is on.
 const GOAL_KEY = 'vetly:goal';
 
 /** Returns the saved goal, or null if none / blank / storage failed. */

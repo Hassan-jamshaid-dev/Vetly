@@ -1,4 +1,4 @@
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -197,6 +197,11 @@ export default function SettingsScreen() {
       <Text style={styles.sectionLabel}>App</Text>
       <Card padding={0} radius={16}>
         <View style={styles.groupClip}>
+          <SettingsRow
+            icon="help-circle-outline"
+            label="How to use Vetly"
+            onPress={() => router.push('/help' as Href)}
+          />
           <SettingsRow
             icon="information-circle-outline"
             label="About Vetly"

@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SplashDecor } from '@/components/decor/SplashDecor';
 import { VMark } from '@/components/VMark';
-import { DEMO_FORCE_FIRST_RUN } from '@/config/demo';
+import { DEMO_ALWAYS_SHOW_ONBOARDING, DEMO_FORCE_FIRST_RUN } from '@/config/demo';
 import { getGoal } from '@/storage/goalStorage';
 import { colors } from '@/theme/colors';
 import { motion } from '@/theme/motion';
@@ -20,8 +20,9 @@ const BAR_WIDTH = 140;
 const BAR_HEIGHT = 4;
 
 // Screen 1: Splash. Shows the brand briefly, then fades to Onboarding or Home.
-// When DEMO_FORCE_FIRST_RUN is true (see src/config/demo.ts), reset the demo
-// session then always go to Get Started so a recording never skips first-run.
+// TEMPORARY: DEMO_ALWAYS_SHOW_ONBOARDING keeps Splash → Get Started even when a
+// goal is already saved (goals are not wiped). DEMO_FORCE_FIRST_RUN still resets
+// the whole demo session when on — leave it false unless you need a clean slate.
 export default function SplashScreen() {
   const router = useRouter();
   const pathname = usePathname();
@@ -79,8 +80,9 @@ export default function SplashScreen() {
         }).start(() => {
           if (cancelled) return;
           if (!isSplashRoute(pathnameRef.current)) return;
-          // Flip DEMO_FORCE_FIRST_RUN to false to restore skip-to-Home + persisted session.
-          if (!DEMO_FORCE_FIRST_RUN && savedGoal) {
+          // TEMPORARY: DEMO_ALWAYS_SHOW_ONBOARDING forces Get Started. Revert by
+          // setting it false in src/config/demo.ts so a saved goal skips to Home.
+          if (!DEMO_FORCE_FIRST_RUN && !DEMO_ALWAYS_SHOW_ONBOARDING && savedGoal) {
             router.replace('/(tabs)/home');
           } else {
             router.replace('/onboarding');

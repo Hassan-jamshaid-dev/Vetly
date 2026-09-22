@@ -41,6 +41,7 @@ export default function PaywallScreen() {
   const [plan, setPlan] = useState<PremiumPlan>('yearly');
   const [busy, setBusy] = useState(false);
   const [hasOfferings, setHasOfferings] = useState(true);
+  const [billingNotice, setBillingNotice] = useState<string | null>(null);
   const nativeAvailable = isNativePurchasesAvailable();
   const showDemoUnlock = !nativeAvailable && __DEV__;
   const useDashboardPaywallPrimary = nativeAvailable && !hasOfferings;
@@ -93,9 +94,8 @@ export default function PaywallScreen() {
     if (busy) return;
 
     if (!nativeAvailable) {
-      showAlert(
-        'Development build required',
-        'Expo Go cannot run RevenueCat in-app purchases. Install a development build (`npx expo run:android` or an EAS development profile), put the Test Store public SDK key in EXPO_PUBLIC_REVENUECAT_API_KEY, then subscribe. Test Store charges no real money.',
+      setBillingNotice(
+        'Purchases run on the Android or iOS app. This preview cannot complete a store purchase.',
       );
       return;
     }
@@ -143,9 +143,8 @@ export default function PaywallScreen() {
   const handleDashboardPaywall = async () => {
     if (busy) return;
     if (!nativeAvailable) {
-      showAlert(
-        'Development build required',
-        'Expo Go cannot present the RevenueCat dashboard Paywall. Use `npx expo run:android` or an EAS development profile.',
+      setBillingNotice(
+        'Purchases run on the Android or iOS app. This preview cannot complete a store purchase.',
       );
       return;
     }
@@ -188,9 +187,8 @@ export default function PaywallScreen() {
   const handleRestore = async () => {
     if (busy) return;
     if (!nativeAvailable) {
-      showAlert(
-        'Restore purchases',
-        'Restore calls RevenueCat in a development or store build. Expo Go cannot restore a store or Test Store purchase.',
+      setBillingNotice(
+        'Restore runs on the Android or iOS app. This preview cannot restore a store purchase.',
       );
       return;
     }
@@ -227,7 +225,7 @@ export default function PaywallScreen() {
         : 'Purchasing...'
       : 'Please wait...'
     : !nativeAvailable
-      ? 'Install a development build'
+      ? 'Available on iOS & Android'
       : useDashboardPaywallPrimary
         ? 'Subscribe with RevenueCat'
         : plan === 'yearly'
@@ -258,7 +256,7 @@ export default function PaywallScreen() {
           accessibilityLabel="Close"
           style={({ pressed }) => [styles.close, pressed && styles.pressed]}
         >
-          <Ionicons name="close" size={22} color={colors.white} />
+          <Ionicons name="close" size={20} color={colors.white} />
         </Pressable>
 
         <Image
@@ -328,8 +326,8 @@ export default function PaywallScreen() {
           />
           {!nativeAvailable ? (
             <Text style={styles.demoNote}>
-              Expo Go cannot purchase. Open the development APK so Subscribe runs RevenueCat Test
-              Store (sandbox, no real money).
+              Purchases run on the Android or iOS app — this web preview cannot complete a store
+              purchase.
             </Text>
           ) : (
             <Text style={styles.demoNote}>
@@ -338,6 +336,11 @@ export default function PaywallScreen() {
                 : 'RevenueCat Test Store — sandbox, no real money.'}
             </Text>
           )}
+          {billingNotice ? (
+            <View style={styles.noticeBox}>
+              <Text style={styles.noticeText}>{billingNotice}</Text>
+            </View>
+          ) : null}
           {nativeAvailable && hasOfferings ? (
             <Pressable
               onPress={handleDashboardPaywall}
@@ -392,13 +395,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   close: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-end',
-    backgroundColor: colors.whiteAlpha18,
+    backgroundColor: colors.whiteAlpha25,
+    borderWidth: 1.5,
+    borderColor: colors.white,
   },
   pressed: {
     opacity: 0.72,
@@ -562,6 +567,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     color: colors.paywallMuted,
+    textAlign: 'center',
+  },
+  noticeBox: {
+    marginTop: 12,
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: colors.whiteAlpha25,
+    borderWidth: 1,
+    borderColor: colors.whiteAlpha25,
+  },
+  noticeText: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.white,
     textAlign: 'center',
   },
   later: {

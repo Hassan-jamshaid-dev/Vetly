@@ -1,15 +1,15 @@
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TAB_ICON_SIZE, TabBarIcon, TabBarLabel } from '@/components/TabBarIcon';
+import { getIsPremium } from '@/storage/premiumStorage';
 import { colors } from '@/theme/colors';
 
 /** Content row only — bottom inset is added separately so icons don't jump. */
 export const TAB_BAR_CONTENT_HEIGHT = 56;
 
-// Makes `/(tabs)/home` the screen expo-router lands on when the group is opened
-// directly (deep link, replace to the group), not just the first child in order.
 export const unstable_settings = {
   initialRouteName: 'home',
 };
@@ -17,6 +17,20 @@ export const unstable_settings = {
 // Bottom tab shell: Home, History, Profile. Each tab hides its own header.
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const [isPremium, setIsPremium] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getIsPremium().then((value) => {
+      if (!cancelled) setIsPremium(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  const historyLocked = isPremium !== true;
 
   return (
     <Tabs
@@ -39,8 +53,8 @@ export default function TabsLayout() {
         },
         tabBarItemStyle: {
           height: TAB_BAR_CONTENT_HEIGHT,
-          paddingTop: 6,
-          paddingBottom: 4,
+          paddingTop: 4,
+          paddingBottom: 2,
           minWidth: 44,
         },
         tabBarIconStyle: {
@@ -77,6 +91,7 @@ export default function TabsLayout() {
         options={{
           title: 'History',
           headerShown: false,
+          tabBarAccessibilityLabel: historyLocked ? 'History, Premium locked' : 'History',
           tabBarLabel: ({ focused, color }) => (
             <TabBarLabel label="History" focused={focused} color={color} />
           ),
@@ -87,6 +102,7 @@ export default function TabsLayout() {
               focused={focused}
               color={color}
               size={TAB_ICON_SIZE}
+              locked={historyLocked}
             />
           ),
         }}

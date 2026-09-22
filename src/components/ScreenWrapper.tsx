@@ -20,11 +20,15 @@ import { spacing } from '@/theme/spacing';
  *  the ScrollView and eats TextInput touches. */
 export const keyboardAvoidingBehavior = Platform.OS === 'ios' ? 'padding' : undefined;
 
+const isWeb = Platform.OS === 'web';
+
 type ScreenWrapperProps = {
   children: ReactNode;
   title?: string;
   onBack?: () => void;
   headerRight?: ReactNode;
+  /** Sticky in-screen chrome (tab titles, Home mark) — not a second Stack header. */
+  chrome?: ReactNode;
   /** Decor / blobs drawn behind the safe screen (does not receive touches). */
   background?: ReactNode;
   footer?: ReactNode;
@@ -40,14 +44,14 @@ type ScreenWrapperProps = {
 
 /**
  * Safe top inset, optional back+title header, optional scroll, optional sticky
- * footer. Stack routes already hide the navigator header — this is the in-screen
- * chrome, not a second nav.
+ * footer. Root Stack already uses headerShown: false — this is the only chrome.
  */
 export function ScreenWrapper({
   children,
   title,
   onBack,
   headerRight,
+  chrome,
   background,
   footer,
   keyboard = false,
@@ -69,11 +73,9 @@ export function ScreenWrapper({
         { paddingBottom: footer ? spacing.xl : Math.max(insets.bottom, spacing.xxl) },
         contentContainerStyle,
       ]}
-      // "handled" eats Android's first tap on an unfocused TextInput (IME
-      // never opens until a later tap or paste). "always" delivers that tap.
+      contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="always"
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-      // Nested scrolling steals the first tap from multiline TextInput on Android.
       nestedScrollEnabled={false}
       showsVerticalScrollIndicator={false}
     >
@@ -83,21 +85,27 @@ export function ScreenWrapper({
     <View style={styles.body}>{children}</View>
   );
 
-  // Single column View (not a fragment) so KeyboardAvoidingView has one flex
-  // child and the sticky footer cannot paint over the ScrollView.
   const inner = (
     <View style={styles.flex}>
-      {showHeader ? <ScreenHeader onBack={onBack} title={title} right={headerRight} /> : null}
+      {showHeader ? (
+        <View style={isWeb ? styles.webTop : null}>
+          <ScreenHeader onBack={onBack} title={title} right={headerRight} />
+        </View>
+      ) : null}
+      {chrome ? <View style={[styles.chrome, isWeb && styles.webTop]}>{chrome}</View> : null}
       {body}
       {footer ? <View style={styles.footerSlot}>{footer}</View> : null}
     </View>
   );
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor }, style]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.screen, isWeb && styles.screenWeb, { backgroundColor }, style]}
+      edges={isWeb ? [] : ['top']}
+    >
       <StatusBar style="dark" />
       {background ? (
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <View pointerEvents="none" style={StyleSheet.absoluteFill} accessibilityElementsHidden>
           {background}
         </View>
       ) : null}
@@ -120,15 +128,26 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
+  screenWeb: {
+    height: '100%',
+    maxHeight: '100%',
+    overflow: 'hidden',
+  },
   flex: {
     flex: 1,
   },
+  webTop: {
+    paddingTop: spacing.sm,
+  },
+  chrome: {
+    flexShrink: 0,
+  },
   body: {
     flex: 1,
-    zIndex: 1,
   },
   footerSlot: {
     flexShrink: 0,
+    zIndex: 2,
   },
   grow: {
     flexGrow: 1,
