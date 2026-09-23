@@ -17,7 +17,7 @@ Built for students. **Shipaton 2026 Next Gen.** Solo project by a 16-year-old. T
 | | URL |
 |---|---|
 | Web demo | https://vetly-f99d6523.netlify.app |
-| Android APK (preview / standalone, not Expo Go) | https://expo.dev/artifacts/eas/rYSdukQ2kek8TFhHkDjaNBNAUf8ZTbX3EvLg8bqBKDk.apk |
+| Android APK (preview / standalone, not Expo Go) | https://expo.dev/artifacts/eas/v6zZNBCjmp8m9B5LxjeYO6z7tJpYeRcPtYJvtyzRpK4.apk |
 | GitHub | https://github.com/Hassan-jamshaid-dev/Vetly |
 
 Docs: [Architecture](docs/ARCHITECTURE.md) · [RevenueCat](docs/REVENUECAT_INTEGRATION.md)
@@ -105,7 +105,7 @@ Email / Google / Apple on **Sign up** are **simulated** (labeled demo in the UI)
 | Reverse discovery (free) | **Web**, **Expo Go**, or the standalone APK. No account. |
 | Subscribe / `vetly_pro` | **Standalone or development APK** (native IAP). Expo Go and web cannot load store purchases. |
 
-**Standalone Android APK (judges):** https://expo.dev/artifacts/eas/rYSdukQ2kek8TFhHkDjaNBNAUf8ZTbX3EvLg8bqBKDk.apk
+**Standalone Android APK (judges):** https://expo.dev/artifacts/eas/v6zZNBCjmp8m9B5LxjeYO6z7tJpYeRcPtYJvtyzRpK4.apk
 
 **Web:** https://vetly-f99d6523.netlify.app (guest reverse discovery; no IAP). If that URL asks for a Netlify login, set **Project configuration → General → Visitor access → Project visibility → Public**.
 
@@ -439,7 +439,7 @@ Copy `.env.example` → `.env`. Empty placeholders only. For sandbox IAP, put th
 | `REVENUECAT_SECRET` | Optional, **local catalog scripts only**. Never `EXPO_PUBLIC_`. Never commit a real value. |
 
 - **Expo Go** (`npx expo start`): JS app, guest reverse discovery. No IAP.
-- **Preview APK:** https://expo.dev/artifacts/eas/rYSdukQ2kek8TFhHkDjaNBNAUf8ZTbX3EvLg8bqBKDk.apk — native IAP / Test Store. Not Expo Go.
+- **Preview APK:** https://expo.dev/artifacts/eas/v6zZNBCjmp8m9B5LxjeYO6z7tJpYeRcPtYJvtyzRpK4.apk — native IAP / Test Store. Not Expo Go.
 - **IAP locally:** a binary that includes native purchases, then `npx expo start --dev-client`.
 
 ```bash
@@ -516,7 +516,7 @@ Claude for live evaluations (**server-side** key, never `EXPO_PUBLIC_`). Same `v
 
 - **GitHub:** https://github.com/Hassan-jamshaid-dev/Vetly
 - **Website / web demo:** https://vetly-f99d6523.netlify.app
-- **Android APK:** https://expo.dev/artifacts/eas/rYSdukQ2kek8TFhHkDjaNBNAUf8ZTbX3EvLg8bqBKDk.apk
+- **Android APK:** https://expo.dev/artifacts/eas/v6zZNBCjmp8m9B5LxjeYO6z7tJpYeRcPtYJvtyzRpK4.apk
 - **Screenshots:** `assets/screenshots/` (home, evaluate, results, paywall — 1179×2556, no device frame)
 - **Video:** paste your Devpost video URL here after you upload it. **You must add the video on Devpost; this project does not include one.**
 - **Claude:** on-device mock. Not live.

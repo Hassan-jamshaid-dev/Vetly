@@ -34,8 +34,8 @@ export default function LegalScreen() {
       {content.sections.map((section) => (
         <View key={section.heading} style={styles.section}>
           <Text style={styles.heading}>{section.heading}</Text>
-          {section.paragraphs.map((paragraph) => (
-            <Text key={paragraph.slice(0, 48)} style={styles.paragraph}>
+          {section.paragraphs.map((paragraph, index) => (
+            <Text key={`${section.heading}-${index}`} style={styles.paragraph}>
               {paragraph}
             </Text>
           ))}

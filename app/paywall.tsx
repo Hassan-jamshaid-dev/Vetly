@@ -62,7 +62,7 @@ export default function PaywallScreen() {
   const useDashboardPaywallPrimary = nativeAvailable && !hasOfferings;
   // Mobile browsers often report 0 safe-area inset under chrome; keep content clear.
   const topPad = Math.max(insets.top, Platform.OS === 'web' ? 28 : 12) + 16;
-  const bottomPad = Math.max(insets.bottom, Platform.OS === 'web' ? 24 : 12) + 28;
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'web' ? 32 : 16) + 36;
 
   useEffect(() => {
     if (!nativeAvailable) return;
@@ -74,6 +74,26 @@ export default function PaywallScreen() {
       cancelled = true;
     };
   }, [nativeAvailable]);
+
+  // Web: #root / body stay light from the stack, which shows as a white band under
+  // Restore. Paint the document purple while this screen is mounted.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById('root');
+    const prevHtml = html.style.backgroundColor;
+    const prevBody = body.style.backgroundColor;
+    const prevRoot = root?.style.backgroundColor ?? '';
+    html.style.backgroundColor = colors.paywallBottom;
+    body.style.backgroundColor = colors.paywallBottom;
+    if (root) root.style.backgroundColor = colors.paywallBottom;
+    return () => {
+      html.style.backgroundColor = prevHtml;
+      body.style.backgroundColor = prevBody;
+      if (root) root.style.backgroundColor = prevRoot;
+    };
+  }, []);
 
   const closePaywall = () => {
     if (router.canGoBack()) router.back();
@@ -420,9 +440,21 @@ export default function PaywallScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    backgroundColor: colors.paywallBottom,
+    ...(Platform.OS === 'web'
+      ? {
+          position: 'absolute' as const,
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          width: '100%' as unknown as number,
+          height: '100%' as unknown as number,
+        }
+      : {}),
   },
   gradientFill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   scroll: {
     flex: 1,
