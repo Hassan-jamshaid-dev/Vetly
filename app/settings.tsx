@@ -214,7 +214,7 @@ export default function SettingsScreen() {
           />
           <SettingsRow
             icon="document-text-outline"
-            label="Terms of Service"
+            label="Terms and Conditions"
             onPress={() => router.push({ pathname: '/legal', params: { page: 'terms' } })}
             isLast
           />

@@ -150,10 +150,6 @@ export default function HomeScreen() {
               <Text style={styles.hi}>{greetingLine}</Text>
               <Text style={styles.headline}>Know before</Text>
               <GradientWords style={styles.headline}>you go.</GradientWords>
-              <Text style={styles.subcopy}>
-                Get personalized insights, spot gaps, and make smarter decisions about your
-                future.
-              </Text>
             </>
           )}
         </View>
@@ -162,17 +158,12 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.primary}>
-        <GradientButton
-          label="Evaluate an opportunity"
-          onPress={() => router.push('/evaluate')}
-          icon={<Ionicons name="sparkles" size={16} color={colors.white} />}
-          trailingIcon={<Ionicons name="arrow-forward" size={18} color={colors.white} />}
-        />
-        <Text style={styles.ctaHint}>
-          Paste a listing or opportunity and see if it fits your goals.
-        </Text>
-      </View>
+      <GradientButton
+        label="Evaluate an opportunity"
+        onPress={() => router.push('/evaluate')}
+        icon={<Ionicons name="sparkles" size={16} color={colors.white} />}
+        trailingIcon={<Ionicons name="arrow-forward" size={18} color={colors.white} />}
+      />
 
       <Pressable
         onPress={() => router.navigate('/(tabs)/profile')}
@@ -361,7 +352,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    gap: 20,
+    gap: 16,
   },
   headerRow: {
     minHeight: 44,
@@ -449,22 +440,6 @@ const styles = StyleSheet.create({
   },
   sizer: {
     opacity: 0,
-  },
-  subcopy: {
-    ...type.bodySmall,
-    marginTop: 10,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-  },
-  primary: {
-    gap: 12,
-  },
-  ctaHint: {
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
   row: {
     minHeight: 48,

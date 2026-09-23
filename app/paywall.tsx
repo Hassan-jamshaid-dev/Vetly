@@ -1,9 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GradientButton } from '@/components/GradientButton';
@@ -33,11 +42,17 @@ const FEATURES = [
   'Application, resume, and cover-letter help',
 ];
 
+const WEB_CHECKOUT_NOTE =
+  'Checkout opens in the iOS or Android app. This web preview cannot complete a store purchase.';
+const WEB_RESTORE_NOTE =
+  'Restore runs in the iOS or Android app. This preview cannot restore a store purchase.';
+
 // Custom paywall. Native / dev-client: RevenueCat purchasePackage (Test Store
 // sandbox or live stores). Expo Go cannot load native IAP.
 export default function PaywallScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const [plan, setPlan] = useState<PremiumPlan>('yearly');
   const [busy, setBusy] = useState(false);
   const [hasOfferings, setHasOfferings] = useState(true);
@@ -45,6 +60,9 @@ export default function PaywallScreen() {
   const nativeAvailable = isNativePurchasesAvailable();
   const showDemoUnlock = !nativeAvailable && __DEV__;
   const useDashboardPaywallPrimary = nativeAvailable && !hasOfferings;
+  // Mobile browsers often report 0 safe-area inset under chrome; keep content clear.
+  const topPad = Math.max(insets.top, Platform.OS === 'web' ? 28 : 12) + 16;
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'web' ? 24 : 12) + 28;
 
   useEffect(() => {
     if (!nativeAvailable) return;
@@ -94,9 +112,7 @@ export default function PaywallScreen() {
     if (busy) return;
 
     if (!nativeAvailable) {
-      setBillingNotice(
-        'Purchases run on the Android or iOS app. This preview cannot complete a store purchase.',
-      );
+      setBillingNotice(WEB_CHECKOUT_NOTE);
       return;
     }
 
@@ -143,9 +159,7 @@ export default function PaywallScreen() {
   const handleDashboardPaywall = async () => {
     if (busy) return;
     if (!nativeAvailable) {
-      setBillingNotice(
-        'Purchases run on the Android or iOS app. This preview cannot complete a store purchase.',
-      );
+      setBillingNotice(WEB_CHECKOUT_NOTE);
       return;
     }
     if (!hasPublicRevenueCatApiKey()) {
@@ -187,9 +201,7 @@ export default function PaywallScreen() {
   const handleRestore = async () => {
     if (busy) return;
     if (!nativeAvailable) {
-      setBillingNotice(
-        'Restore runs on the Android or iOS app. This preview cannot restore a store purchase.',
-      );
+      setBillingNotice(WEB_RESTORE_NOTE);
       return;
     }
     setBusy(true);
@@ -225,7 +237,7 @@ export default function PaywallScreen() {
         : 'Purchasing...'
       : 'Please wait...'
     : !nativeAvailable
-      ? 'Available on iOS & Android'
+      ? 'Subscribe in the app'
       : useDashboardPaywallPrimary
         ? 'Subscribe with RevenueCat'
         : plan === 'yearly'
@@ -233,166 +245,188 @@ export default function PaywallScreen() {
           : 'Subscribe · $10.99/month';
 
   return (
-    <LinearGradient
-      colors={[colors.paywallTop, colors.paywallBottom]}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.screen}
-    >
-      <StatusBar style="light" />
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + 4,
-          paddingBottom: insets.bottom + 28,
-          paddingHorizontal: 28,
-          flexGrow: 1,
+    <>
+      <Stack.Screen
+        options={{
+          contentStyle: { backgroundColor: colors.paywallBottom },
+          animation: 'fade',
         }}
-        showsVerticalScrollIndicator={false}
+      />
+      <View
+        style={[
+          styles.screen,
+          { backgroundColor: colors.paywallBottom, minHeight: windowHeight },
+        ]}
       >
-        <Pressable
-          onPress={closePaywall}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          style={({ pressed }) => [styles.close, pressed && styles.pressed]}
-        >
-          <Ionicons name="close" size={20} color={colors.white} />
-        </Pressable>
-
-        <Image
-          source={require('../assets/images/paywall-hero.webp')}
-          style={styles.heroImage}
-          resizeMode="cover"
-          accessibilityIgnoresInvertColors
+        <LinearGradient
+          colors={[colors.paywallTop, colors.paywallBottom]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.gradientFill}
         />
-
-        <Text style={styles.eyebrow}>Premium</Text>
-        <Text style={styles.heading}>Know before you go.</Text>
-        <Text style={styles.kicker}>Without a daily cap — evaluated against your goals.</Text>
-
-        <View style={styles.features}>
-          {FEATURES.map((feature, index) => (
-            <View key={feature} style={[styles.featureRow, index > 0 && styles.featureRule]}>
-              <Ionicons name="checkmark" size={15} color={colors.paywallMuted} />
-              <Text style={styles.featureText}>{feature}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.offers}>
+        <StatusBar style="light" />
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={{
+            paddingTop: topPad,
+            paddingBottom: bottomPad,
+            paddingHorizontal: 28,
+            flexGrow: 1,
+            minHeight: windowHeight,
+          }}
+          showsVerticalScrollIndicator={false}
+          bounces
+          keyboardShouldPersistTaps="handled"
+        >
           <Pressable
-            onPress={() => setPlan('yearly')}
+            onPress={closePaywall}
+            hitSlop={12}
             accessibilityRole="button"
-            accessibilityLabel="Yearly, $80.99 per year"
-            accessibilityState={{ selected: plan === 'yearly' }}
-            style={({ pressed }) => [
-              styles.heroOffer,
-              plan === 'yearly' && styles.heroOfferSelected,
-              pressed && styles.pressed,
-            ]}
+            accessibilityLabel="Close"
+            style={({ pressed }) => [styles.close, pressed && styles.pressed]}
           >
-            <View style={styles.heroOfferTop}>
-              <Text style={styles.heroOfferLabel}>Yearly</Text>
-              <View style={[styles.radio, plan === 'yearly' && styles.radioOn]} />
-            </View>
-            <Text style={styles.heroPrice}>$80.99</Text>
-            <Text style={styles.heroPeriod}>$6.75 per month, billed once a year</Text>
+            <Ionicons name="close" size={20} color={colors.white} />
           </Pressable>
 
-          <Pressable
-            onPress={() => setPlan('monthly')}
-            accessibilityRole="button"
-            accessibilityLabel="Monthly, $10.99 per month"
-            accessibilityState={{ selected: plan === 'monthly' }}
-            style={({ pressed }) => [
-              styles.altOffer,
-              plan === 'monthly' && styles.altOfferSelected,
-              pressed && styles.pressed,
-            ]}
-          >
-            <View>
-              <Text style={styles.altTitle}>Monthly</Text>
-              <Text style={styles.altPeriod}>Billed each month</Text>
-            </View>
-            <Text style={styles.altPrice}>$10.99</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.cta}>
-          <GradientButton
-            label={unlockLabel}
-            onPress={handleSubscribe}
-            disabled={busy}
+          <Image
+            source={require('../assets/images/paywall-hero.webp')}
+            style={styles.heroImage}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
           />
-          {!nativeAvailable ? (
-            <Text style={styles.demoNote}>
-              Purchases run on the Android or iOS app — this web preview cannot complete a store
-              purchase.
-            </Text>
-          ) : (
-            <Text style={styles.demoNote}>
-              {useDashboardPaywallPrimary
-                ? 'Subscribe opens the RevenueCat paywall. Test Store charges no real money.'
-                : 'RevenueCat Test Store — sandbox, no real money.'}
-            </Text>
-          )}
-          {billingNotice ? (
-            <View style={styles.noticeBox}>
-              <Text style={styles.noticeText}>{billingNotice}</Text>
-            </View>
-          ) : null}
-          {nativeAvailable && hasOfferings ? (
+
+          <Text style={styles.eyebrow}>Premium</Text>
+          <Text style={styles.heading}>Know before you go.</Text>
+          <Text style={styles.kicker}>Without a daily cap. Evaluated against your goals.</Text>
+
+          <View style={styles.features}>
+            {FEATURES.map((feature, index) => (
+              <View key={feature} style={[styles.featureRow, index > 0 && styles.featureRule]}>
+                <Ionicons name="checkmark" size={15} color={colors.paywallMuted} />
+                <Text style={styles.featureText}>{feature}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.offers}>
             <Pressable
-              onPress={handleDashboardPaywall}
-              disabled={busy}
-              hitSlop={8}
+              onPress={() => setPlan('yearly')}
               accessibilityRole="button"
-              accessibilityLabel="Open RevenueCat dashboard Paywall"
-              style={({ pressed }) => [styles.later, pressed && styles.pressed]}
+              accessibilityLabel="Yearly, $80.99 per year"
+              accessibilityState={{ selected: plan === 'yearly' }}
+              style={({ pressed }) => [
+                styles.heroOffer,
+                plan === 'yearly' && styles.heroOfferSelected,
+                pressed && styles.pressed,
+              ]}
             >
-              <Text style={styles.laterText}>Open RevenueCat paywall</Text>
+              <View style={styles.heroOfferTop}>
+                <Text style={styles.heroOfferLabel}>Yearly</Text>
+                <View style={[styles.radio, plan === 'yearly' && styles.radioOn]} />
+              </View>
+              <Text style={styles.heroPrice}>$80.99</Text>
+              <Text style={styles.heroPeriod}>$6.75 per month, billed once a year</Text>
             </Pressable>
-          ) : null}
-          {showDemoUnlock ? (
+
             <Pressable
-              onPress={handleDemoUnlock}
-              disabled={busy}
-              hitSlop={8}
+              onPress={() => setPlan('monthly')}
               accessibilityRole="button"
-              accessibilityLabel="Unlock demo Premium, not billed, not a store purchase"
-              style={({ pressed }) => [styles.demoUnlock, pressed && styles.pressed]}
+              accessibilityLabel="Monthly, $10.99 per month"
+              accessibilityState={{ selected: plan === 'monthly' }}
+              style={({ pressed }) => [
+                styles.altOffer,
+                plan === 'monthly' && styles.altOfferSelected,
+                pressed && styles.pressed,
+              ]}
             >
-              <Text style={styles.demoUnlockText}>Demo unlock · not billed · not a store purchase</Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            onPress={handleRestore}
-            hitSlop={8}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.later, pressed && styles.pressed]}
-          >
-            <Text style={styles.laterText}>Restore purchases</Text>
-          </Pressable>
-          <View style={styles.legalRow}>
-            <Pressable onPress={() => router.push({ pathname: '/legal', params: { page: 'terms' } })}>
-              <Text style={styles.legalLink}>Terms</Text>
-            </Pressable>
-            <Text style={styles.legalDot}>·</Text>
-            <Pressable
-              onPress={() => router.push({ pathname: '/legal', params: { page: 'privacy' } })}
-            >
-              <Text style={styles.legalLink}>Privacy</Text>
+              <View>
+                <Text style={styles.altTitle}>Monthly</Text>
+                <Text style={styles.altPeriod}>Billed each month</Text>
+              </View>
+              <Text style={styles.altPrice}>$10.99</Text>
             </Pressable>
           </View>
-        </View>
-      </ScrollView>
-    </LinearGradient>
+
+          <View style={styles.cta}>
+            <GradientButton label={unlockLabel} onPress={handleSubscribe} disabled={busy} />
+            {!nativeAvailable ? (
+              <Text style={styles.webCheckoutNote}>{WEB_CHECKOUT_NOTE}</Text>
+            ) : (
+              <Text style={styles.demoNote}>
+                {useDashboardPaywallPrimary
+                  ? 'Subscribe opens the RevenueCat paywall. Test Store charges no real money.'
+                  : 'RevenueCat Test Store. Sandbox, no real money.'}
+              </Text>
+            )}
+            {billingNotice ? (
+              <View style={styles.noticeBox}>
+                <Text style={styles.noticeText}>{billingNotice}</Text>
+              </View>
+            ) : null}
+            {nativeAvailable && hasOfferings ? (
+              <Pressable
+                onPress={handleDashboardPaywall}
+                disabled={busy}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Open RevenueCat dashboard Paywall"
+                style={({ pressed }) => [styles.later, pressed && styles.pressed]}
+              >
+                <Text style={styles.laterText}>Open RevenueCat paywall</Text>
+              </Pressable>
+            ) : null}
+            {showDemoUnlock ? (
+              <Pressable
+                onPress={handleDemoUnlock}
+                disabled={busy}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Unlock demo Premium, not billed, not a store purchase"
+                style={({ pressed }) => [styles.demoUnlock, pressed && styles.pressed]}
+              >
+                <Text style={styles.demoUnlockText}>
+                  Demo unlock · not billed · not a store purchase
+                </Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={handleRestore}
+              hitSlop={8}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.later, pressed && styles.pressed]}
+            >
+              <Text style={styles.laterText}>Restore purchases</Text>
+            </Pressable>
+            <View style={styles.legalRow}>
+              <Pressable
+                onPress={() => router.push({ pathname: '/legal', params: { page: 'terms' } })}
+              >
+                <Text style={styles.legalLink}>Terms</Text>
+              </Pressable>
+              <Text style={styles.legalDot}>·</Text>
+              <Pressable
+                onPress={() => router.push({ pathname: '/legal', params: { page: 'privacy' } })}
+              >
+                <Text style={styles.legalLink}>Privacy</Text>
+              </Pressable>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  gradientFill: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scroll: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   close: {
     width: 40,
@@ -413,7 +447,7 @@ const styles = StyleSheet.create({
     height: 128,
     borderRadius: 20,
     borderCurve: 'continuous',
-    marginTop: 20,
+    marginTop: 12,
     backgroundColor: colors.paywallCard,
   },
   eyebrow: {
@@ -465,7 +499,8 @@ const styles = StyleSheet.create({
   },
   offers: {
     marginTop: 28,
-    gap: 10,
+    gap: 12,
+    marginBottom: 8,
   },
   heroOffer: {
     borderRadius: 22,
@@ -520,10 +555,10 @@ const styles = StyleSheet.create({
     color: colors.paywallMuted,
   },
   altOffer: {
-    minHeight: 64,
+    minHeight: 72,
     borderRadius: 16,
     borderCurve: 'continuous',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 20,
     backgroundColor: colors.paywallCard,
     borderWidth: StyleSheet.hairlineWidth,
@@ -559,15 +594,26 @@ const styles = StyleSheet.create({
   },
   cta: {
     marginTop: 'auto',
-    paddingTop: 32,
+    paddingTop: 28,
+    gap: 4,
   },
   demoNote: {
     marginTop: 14,
     fontFamily: fonts.regular,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 19,
     color: colors.paywallMuted,
     textAlign: 'center',
+    paddingHorizontal: 8,
+  },
+  webCheckoutNote: {
+    marginTop: 14,
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.paywallMuted,
+    textAlign: 'center',
+    paddingHorizontal: 4,
   },
   noticeBox: {
     marginTop: 12,
