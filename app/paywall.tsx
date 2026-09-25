@@ -4,7 +4,6 @@ import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import {
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -16,6 +15,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GradientButton } from '@/components/GradientButton';
+import { PaywallDecor } from '@/components/decor/PaywallDecor';
+import { VMark } from '@/components/VMark';
 import {
   hasCurrentOfferingPackages,
   hasPublicRevenueCatApiKey,
@@ -33,6 +34,8 @@ import { getCurrentEvaluation } from '@/store/evaluationStore';
 import { colors } from '@/theme/colors';
 import { fonts } from '@/theme/typography';
 import { showAlert } from '@/utils/dialog';
+
+const MARK_SIZE = 112;
 
 // Copy and prices match RevenueCat products: $10.99/mo and $80.99/yr.
 const FEATURES = [
@@ -52,7 +55,7 @@ const WEB_RESTORE_NOTE =
 export default function PaywallScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [plan, setPlan] = useState<PremiumPlan>('yearly');
   const [busy, setBusy] = useState(false);
   const [hasOfferings, setHasOfferings] = useState(true);
@@ -61,8 +64,8 @@ export default function PaywallScreen() {
   const showDemoUnlock = !nativeAvailable && __DEV__;
   const useDashboardPaywallPrimary = nativeAvailable && !hasOfferings;
   // Mobile browsers often report 0 safe-area inset under chrome; keep content clear.
-  const topPad = Math.max(insets.top, Platform.OS === 'web' ? 28 : 12) + 16;
-  const bottomPad = Math.max(insets.bottom, Platform.OS === 'web' ? 32 : 16) + 36;
+  const topPad = Math.max(insets.top, Platform.OS === 'web' ? 28 : 12) + 12;
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'web' ? 32 : 16) + 28;
 
   useEffect(() => {
     if (!nativeAvailable) return;
@@ -284,6 +287,7 @@ export default function PaywallScreen() {
           end={{ x: 0.5, y: 1 }}
           style={styles.gradientFill}
         />
+        <PaywallDecor width={windowWidth} height={windowHeight} />
         <StatusBar style="light" />
         <ScrollView
           style={styles.scroll}
@@ -308,16 +312,17 @@ export default function PaywallScreen() {
             <Ionicons name="close" size={20} color={colors.white} />
           </Pressable>
 
-          <Image
-            source={require('../assets/images/paywall-hero.webp')}
-            style={styles.heroImage}
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-          />
+          <View style={styles.markWrap} accessibilityElementsHidden>
+            <VMark size={MARK_SIZE} />
+          </View>
 
           <Text style={styles.eyebrow}>Premium</Text>
-          <Text style={styles.heading}>Know before you go.</Text>
-          <Text style={styles.kicker}>Without a daily cap. Evaluated against your goals.</Text>
+          <Text style={styles.heading} maxFontSizeMultiplier={1.15}>
+            Know before you go.
+          </Text>
+          <Text style={styles.kicker} maxFontSizeMultiplier={1.2}>
+            Without a daily cap. Evaluated against your goals.
+          </Text>
 
           <View style={styles.features}>
             {FEATURES.map((feature, index) => (
@@ -335,17 +340,27 @@ export default function PaywallScreen() {
               accessibilityLabel="Yearly, $80.99 per year"
               accessibilityState={{ selected: plan === 'yearly' }}
               style={({ pressed }) => [
-                styles.heroOffer,
-                plan === 'yearly' && styles.heroOfferSelected,
+                styles.planCard,
+                styles.planCardYearly,
+                plan === 'yearly' && styles.planCardSelected,
                 pressed && styles.pressed,
               ]}
             >
-              <View style={styles.heroOfferTop}>
-                <Text style={styles.heroOfferLabel}>Yearly</Text>
-                <View style={[styles.radio, plan === 'yearly' && styles.radioOn]} />
+              <View style={styles.planCardTop}>
+                <View style={styles.planLabelRow}>
+                  <Text style={styles.planLabel}>Yearly</Text>
+                  <View style={styles.savePill}>
+                    <Text style={styles.savePillText}>Save 38%</Text>
+                  </View>
+                </View>
+                <View style={[styles.radio, plan === 'yearly' && styles.radioOn]}>
+                  {plan === 'yearly' ? (
+                    <Ionicons name="checkmark" size={11} color={colors.paywallTop} />
+                  ) : null}
+                </View>
               </View>
-              <Text style={styles.heroPrice}>$80.99</Text>
-              <Text style={styles.heroPeriod}>$6.75 per month, billed once a year</Text>
+              <Text style={styles.planPrice}>$80.99</Text>
+              <Text style={styles.planPeriod}>$6.75 per month, billed once a year</Text>
             </Pressable>
 
             <Pressable
@@ -354,16 +369,21 @@ export default function PaywallScreen() {
               accessibilityLabel="Monthly, $10.99 per month"
               accessibilityState={{ selected: plan === 'monthly' }}
               style={({ pressed }) => [
-                styles.altOffer,
-                plan === 'monthly' && styles.altOfferSelected,
+                styles.planCard,
+                plan === 'monthly' && styles.planCardSelected,
                 pressed && styles.pressed,
               ]}
             >
-              <View>
-                <Text style={styles.altTitle}>Monthly</Text>
-                <Text style={styles.altPeriod}>Billed each month</Text>
+              <View style={styles.planCardTop}>
+                <Text style={styles.planLabel}>Monthly</Text>
+                <View style={[styles.radio, plan === 'monthly' && styles.radioOn]}>
+                  {plan === 'monthly' ? (
+                    <Ionicons name="checkmark" size={11} color={colors.paywallTop} />
+                  ) : null}
+                </View>
               </View>
-              <Text style={styles.altPrice}>$10.99</Text>
+              <Text style={styles.planPriceCompact}>$10.99</Text>
+              <Text style={styles.planPeriod}>Billed each month</Text>
             </Pressable>
           </View>
 
@@ -474,16 +494,17 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
   },
-  heroImage: {
-    width: '100%',
-    height: 128,
-    borderRadius: 20,
-    borderCurve: 'continuous',
-    marginTop: 12,
-    backgroundColor: colors.paywallCard,
+  markWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+    // Extra room so the full V mark never feels clipped at the edges.
+    paddingVertical: 8,
+    overflow: 'visible',
   },
   eyebrow: {
-    marginTop: 28,
+    marginTop: 16,
     fontFamily: fonts.medium,
     fontSize: 13,
     lineHeight: 18,
@@ -496,10 +517,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontFamily: fonts.bold,
     fontSize: 32,
-    lineHeight: 38,
+    lineHeight: 40,
     letterSpacing: -0.6,
     color: colors.white,
     textAlign: 'center',
+    paddingHorizontal: 4,
   },
   kicker: {
     marginTop: 10,
@@ -510,7 +532,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   features: {
-    marginTop: 32,
+    marginTop: 28,
   },
   featureRow: {
     flexDirection: 'row',
@@ -530,47 +552,70 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   offers: {
-    marginTop: 28,
+    marginTop: 24,
     gap: 12,
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  heroOffer: {
-    borderRadius: 22,
+  planCard: {
+    borderRadius: 20,
     borderCurve: 'continuous',
-    paddingVertical: 22,
-    paddingHorizontal: 22,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     backgroundColor: colors.paywallCard,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1.5,
     borderColor: colors.paywallLine,
   },
-  heroOfferSelected: {
+  planCardYearly: {
+    paddingVertical: 22,
+  },
+  planCardSelected: {
     backgroundColor: colors.paywallCardSelected,
     borderColor: colors.white,
-    borderWidth: 1,
   },
-  heroOfferTop: {
+  planCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  heroOfferLabel: {
+  planLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  planLabel: {
     fontFamily: fonts.medium,
     fontSize: 14,
     lineHeight: 20,
     color: colors.paywallMuted,
   },
+  savePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderCurve: 'continuous',
+    backgroundColor: colors.whiteAlpha25,
+  },
+  savePillText: {
+    fontFamily: fonts.semibold,
+    fontSize: 11,
+    lineHeight: 14,
+    color: colors.white,
+    letterSpacing: 0.2,
+  },
   radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
     borderColor: colors.paywallMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   radioOn: {
     borderColor: colors.white,
-    borderWidth: 5,
+    backgroundColor: colors.white,
   },
-  heroPrice: {
+  planPrice: {
     marginTop: 10,
     fontFamily: fonts.bold,
     fontSize: 34,
@@ -579,54 +624,25 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontVariant: ['tabular-nums'],
   },
-  heroPeriod: {
-    marginTop: 6,
+  planPriceCompact: {
+    marginTop: 8,
+    fontFamily: fonts.bold,
+    fontSize: 26,
+    lineHeight: 32,
+    letterSpacing: -0.5,
+    color: colors.white,
+    fontVariant: ['tabular-nums'],
+  },
+  planPeriod: {
+    marginTop: 4,
     fontFamily: fonts.regular,
     fontSize: 14,
     lineHeight: 20,
     color: colors.paywallMuted,
   },
-  altOffer: {
-    minHeight: 72,
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: colors.paywallCard,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.paywallLine,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  altOfferSelected: {
-    backgroundColor: colors.paywallCardSelected,
-    borderColor: colors.white,
-    borderWidth: 1,
-  },
-  altTitle: {
-    fontFamily: fonts.medium,
-    fontSize: 15,
-    lineHeight: 20,
-    color: colors.white,
-  },
-  altPeriod: {
-    marginTop: 2,
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.paywallMuted,
-  },
-  altPrice: {
-    fontFamily: fonts.semibold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: colors.white,
-    fontVariant: ['tabular-nums'],
-  },
   cta: {
     marginTop: 'auto',
-    paddingTop: 28,
+    paddingTop: 24,
     gap: 4,
   },
   demoNote: {

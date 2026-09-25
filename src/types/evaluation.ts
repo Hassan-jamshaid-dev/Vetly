@@ -1,6 +1,6 @@
 // Shapes shared by the evaluation engine, the in-memory store and the Results screen.
-// If the Claude integration later returns something different, adapt it to THIS
-// shape inside src/services/evaluation.ts so the UI never has to change.
+// If the model returns something different, adapt it to THIS shape inside
+// src/services/evaluation.ts (and the /api/evaluate route) so the UI never has to change.
 
 /** Whether a single insight reads as good news, bad news, or neither. */
 export type Sentiment = 'positive' | 'negative' | 'neutral';

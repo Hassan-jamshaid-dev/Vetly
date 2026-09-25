@@ -35,8 +35,7 @@ const MAX_CHARS = 2000;
 const INPUT_PLACEHOLDER =
   'Paste a link or describe the internship, hackathon, MUN, or society.';
 
-// The three example opportunities. Descriptions are written so the mock
-// evaluation engine recognises them by title.
+// Example opportunities users can tap to fill the textarea.
 const EXAMPLES = [
   {
     icon: 'code-slash-outline',
@@ -122,10 +121,11 @@ export default function EvaluateScreen() {
 
       setIsAnalyzing(true);
       const [goal, profile] = await Promise.all([getGoal(), getProfile()]);
+      // Free: goal only. Premium: goal + profile fields (no resume bytes).
       const evaluation = await evaluateOpportunity(
         { text: trimmed, imageUri },
         goal ?? '',
-        profile,
+        premium ? profile : null,
       );
 
       if (premium) {
@@ -142,8 +142,12 @@ export default function EvaluateScreen() {
         /* Haptics are a nicety; ignore devices without them. */
       });
       router.push('/results');
-    } catch {
-      showAlert('Something went wrong', 'Please try again.');
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message
+          : 'Please try again.';
+      showAlert('Could not score this', message);
     } finally {
       analyzingRef.current = false;
       setIsAnalyzing(false);

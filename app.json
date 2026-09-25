@@ -23,6 +23,9 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
+    "web": {
+      "output": "server"
+    },
     "plugins": [
       "expo-router",
       [

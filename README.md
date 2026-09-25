@@ -16,9 +16,13 @@ Built for students. **Shipaton 2026 Next Gen.** Solo project by a 16-year-old. T
 
 | | URL |
 |---|---|
-| Web demo | https://vetly-f99d6523.netlify.app |
-| Android APK (preview / standalone, not Expo Go) | https://expo.dev/artifacts/eas/v6zZNBCjmp8m9B5LxjeYO6z7tJpYeRcPtYJvtyzRpK4.apk |
+| **Android APK** (standalone preview — judges: install this; includes Evaluate + paywall) | https://expo.dev/artifacts/eas/RBdtHXWnuqIffU_9WB2NupNk04PthSau379P9p8-tJE.apk |
+| EAS build page | https://expo.dev/accounts/vetly/projects/vetly/builds/f7a0322b-334c-405c-827f-304f09cc2cca |
+| Live scoring API (public base, no secrets) | https://vetly--8ysj4vvefb.expo.app |
+| Web preview (UI only — **does not** run AI scoring yet) | https://vetly-f99d6523.netlify.app |
 | GitHub | https://github.com/Hassan-jamshaid-dev/Vetly |
+
+Live scoring uses OpenAI **gpt-5.5** on the server (`OPENAI_API_KEY`). The key is never in the app binary or this repo.
 
 Docs: [Architecture](docs/ARCHITECTURE.md) · [RevenueCat](docs/REVENUECAT_INTEGRATION.md)
 
@@ -77,7 +81,18 @@ The core loop is short:
 
 Signing in does **not** unlock Premium. Premium is granted only when RevenueCat `CustomerInfo` has an active **`vetly_pro`** entitlement (or, in Expo Go `__DEV__` only, a labeled local demo unlock that is **not** a store purchase).
 
-Evaluations in this build are an **on-device mock**. Claude is not live. `EXPO_PUBLIC_CLAUDE_API_KEY` must stay empty — a real key must never be bundled in the client.
+Live evaluations call a **server** route (`POST /api/evaluate`) that scores with OpenAI **gpt-5.5**. The OpenAI key stays server-side only (`OPENAI_API_KEY` / `OPENAI_MODEL` on the host). Never put a real key in `EXPO_PUBLIC_*` or commit `.env`. Leave `EXPO_PUBLIC_CLAUDE_API_KEY` empty (legacy placeholder).
+
+**What Analyze sends**
+
+| | Free | Premium |
+|---|---|---|
+| Opportunity text (+ screenshot flag) | Yes | Yes |
+| Saved goal | Yes | Yes |
+| Grade, universities, career, activities, situation | No | Yes (when the structured profile exists) |
+| Resume file bytes / local URI | Never | Never |
+
+Screenshot image bytes stay on device; only a `hasScreenshot` flag is sent. Netlify’s static web preview cannot run the API route, so AI scoring is for the **APK** (and local/EAS Hosting with the server), not https://vetly-f99d6523.netlify.app.
 
 ---
 
@@ -87,10 +102,11 @@ Evaluations in this build are an **on-device mock**. Claude is not live. `EXPO_P
 
 ### Guest path (recommended)
 
-1. Open the app. After splash, tap **Get Started**. Do not tap demo sign-in / Google / Apple.
-2. Write a goal (300–1000 characters) or paste the on-screen Grade 11 / Waterloo / MIT example → **Continue**.
-3. Home → **Evaluate Opportunity**. Paste an opportunity *or* tap an example card (Hack Club, MUN, Youth Climate Summit) → **Analyze**.
-4. Read the score vs your goal. That is the product: know before you go.
+1. Install the **standalone Android APK** (not Expo Go): https://expo.dev/artifacts/eas/RBdtHXWnuqIffU_9WB2NupNk04PthSau379P9p8-tJE.apk — [build page](https://expo.dev/accounts/vetly/projects/vetly/builds/f7a0322b-334c-405c-827f-304f09cc2cca).
+2. Open the app. After splash, tap **Get Started**. Do not tap demo sign-in / Google / Apple.
+3. Write a goal (300–1000 characters) or paste the on-screen Grade 11 / Waterloo / MIT example → **Continue**.
+4. Home → **Evaluate Opportunity**. Paste an opportunity *or* tap an example card → **Analyze**. Scoring hits the public API at https://vetly--8ysj4vvefb.expo.app (OpenAI **gpt-5.5** on the server).
+5. Read the score vs your goal. That is the product: know before you go.
 
 Onboarding copy says “No login required. Skip the demo sign-up.”
 
@@ -98,18 +114,20 @@ Onboarding copy says “No login required. Skip the demo sign-up.”
 
 Email / Google / Apple on **Sign up** are **simulated** (labeled demo in the UI). Passwords stay on that screen and are **never saved**. After Continue, you go to Goal (if none is saved) or Home. You still need RevenueCat for Premium.
 
-### Expo Go vs standalone APK
+### Expo Go vs standalone APK vs web
 
 | What to test | Where |
 |---|---|
-| Reverse discovery (free) | **Web**, **Expo Go**, or the standalone APK. No account. |
-| Subscribe / `vetly_pro` | **Standalone or development APK** (native IAP). Expo Go and web cannot load store purchases. |
+| Reverse discovery + **live AI scoring** | **Standalone APK** (recommended for judges). |
+| Subscribe / `vetly_pro` | **Standalone APK** (native IAP / RevenueCat Test Store). Expo Go and web cannot complete checkout. |
+| UI-only web preview | https://vetly-f99d6523.netlify.app — **does not** run AI scoring yet (static Netlify; no server route). |
 
-**Standalone Android APK (judges):** https://expo.dev/artifacts/eas/v6zZNBCjmp8m9B5LxjeYO6z7tJpYeRcPtYJvtyzRpK4.apk
+**Standalone Android APK (judges):** https://expo.dev/artifacts/eas/RBdtHXWnuqIffU_9WB2NupNk04PthSau379P9p8-tJE.apk  
+**EAS build:** https://expo.dev/accounts/vetly/projects/vetly/builds/f7a0322b-334c-405c-827f-304f09cc2cca  
+**Scoring API base (no secrets):** https://vetly--8ysj4vvefb.expo.app  
+**Web:** https://vetly-f99d6523.netlify.app (UI preview only; no live scoring, no IAP). If that URL asks for a Netlify login, set **Project configuration → General → Visitor access → Project visibility → Public**.
 
-**Web:** https://vetly-f99d6523.netlify.app (guest reverse discovery; no IAP). If that URL asks for a Netlify login, set **Project configuration → General → Visitor access → Project visibility → Public**.
-
-RevenueCat Test Store is a **real SDK purchase** (`Purchases.purchasePackage` or `RevenueCatUI.presentPaywall`). The sandbox modal charges **$0** — no real money. Do not treat the Expo Go control **Unlock demo (not billed · not a store purchase)** as the Shipaton purchase. That control is `__DEV__` and local-only.
+**RevenueCat Test Store (sandbox):** purchases in the APK do **not** charge a real card. Prices shown: **$10.99/month** and **$80.99/year**. Subscribe uses `Purchases.purchasePackage` or `RevenueCatUI.presentPaywall`. Do not treat the Expo Go control **Unlock demo (not billed · not a store purchase)** as the Shipaton purchase — that control is `__DEV__` and local-only. **Web / Netlify cannot complete checkout.**
 
 There is no TestFlight yet.
 
@@ -162,12 +180,16 @@ The gear opens **Settings**.
 
 ### Evaluate (`/evaluate`)
 
-Paste a link or description (max 2000 characters) and/or **Upload Screenshot** (`expo-image-picker`). Three example cards fill the field with copy the mock engine recognizes.
+Paste a link or description (max 2000 characters) and/or **Upload Screenshot** (`expo-image-picker`). Three example cards fill the field with sample opportunity copy.
 
 **Analyze:**
 
 - Free with 0 remaining today → paywall (the evaluation is not run).
-- Otherwise the mock engine runs (~1.4–1.9 s delay), then:
+- Otherwise the client POSTs to `/api/evaluate` (absolute URL on native via `EXPO_PUBLIC_API_URL`, e.g. https://vetly--8ysj4vvefb.expo.app):
+  - **Free:** opportunity text + goal (+ screenshot flag). No premium profile fields.
+  - **Premium:** same, plus grade, universities, career, activities, situation when the structured profile exists.
+  - Resume **file bytes** and local URI are **never** sent.
+  - Server scores with OpenAI **gpt-5.5**; key stays on the host.
   - Premium: append to local History.
   - Free: consume one of the three daily slots (resets at **local** midnight).
   - **Always** (best-effort): upsert to Supabase if configured. Cloud failure never blocks Analyze.
@@ -208,6 +230,8 @@ On a development / store build with a public SDK key:
 
 On Expo Go: primary CTA is **Install a development build**. Restore explains that Expo Go cannot restore a store purchase.
 
+On **web / Netlify**: checkout cannot complete (no native IAP). Prices still show **$10.99/month** and **$80.99/year**. Use the standalone APK for Subscribe.
+
 After a real unlock (or the labeled `__DEV__` demo unlock), if the structured premium profile is incomplete → **Premium onboarding**. If the user just analyzed something, that evaluation is saved to History.
 
 ### Premium onboarding (`/premium-onboarding`) and Resume (`/resume`)
@@ -220,7 +244,7 @@ Then **Resume**: optional PDF or image. Only a **local URI + file name** are sto
 
 ### History (`/(tabs)/history`)
 
-Free: locked. Premium: newest-first list plus a **pattern** card from `src/services/coherence.ts` (deterministic mock over titles + profile — not a live model). Tap a row → Results.
+Free: locked. Premium: newest-first list plus a **pattern** card from `src/services/coherence.ts` (deterministic over titles + profile — not a second live model call). Tap a row → Results.
 
 ### Profile (`/(tabs)/profile`)
 
@@ -239,7 +263,9 @@ Longer write-up: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Billing details: 
 
 ```
 app/                         Expo Router screens
-src/services/evaluation.ts   Mock “brain” (evaluateOpportunity)
+app/api/evaluate+api.ts      Server POST /api/evaluate (OpenAI gpt-5.5)
+src/server/openaiModel.ts    Default model id (gpt-5.5) / OPENAI_MODEL override
+src/services/evaluation.ts   Client seam → fetch evaluate API
 src/services/purchases.ts    RevenueCat SDK + UI (do not replace with a second billing class)
 src/services/evaluationCloud.ts  Optional Supabase upsert / fetch
 src/storage/*                AsyncStorage (and SecureStore for demo session)
@@ -250,12 +276,18 @@ src/config/demo.ts           First-run / recording switch
 ```mermaid
 flowchart LR
   UI["Expo Router UI\napp/"]
+  Eval["evaluation.ts"]
+  API["/api/evaluate"]
+  OAI["OpenAI gpt-5.5"]
   Purchases["purchases.ts"]
   SDK["RevenueCat SDK"]
   Store["Test Store / CustomerInfo"]
   Ent["vetly_pro"]
   Premium["Premium UI"]
 
+  UI --> Eval
+  Eval --> API
+  API --> OAI
   UI --> Purchases
   Purchases --> SDK
   SDK --> Store
@@ -276,7 +308,7 @@ TypeScript path alias: `@/` → `src/` (`tsconfig.json`).
 ```
 Evaluate.handleAnalyze
   → getIsPremium / getRemainingToday (free cap)
-  → evaluateOpportunity(input, goal, profile)     // always mock today
+  → evaluateOpportunity(input, goal, profile|null)  // POST /api/evaluate
   → Premium: appendHistory ; Free: consumeOne
   → saveEvaluationRemote(evaluation)              // fire-and-forget upsert
   → setCurrentEvaluation(evaluation)
@@ -295,19 +327,19 @@ Home and History then `fetchRemoteEvaluations` and `mergeRemoteHistory` (newest 
 
 Local History (`vetly:history`) is **Premium-only**. Free Analyze still may upsert to Supabase; the History tab does not show those rows until `vetly_pro` is active.
 
-### Evaluation engine (mock, not Claude)
+### Evaluation engine (live OpenAI, server-side)
 
-`src/services/evaluation.ts` is the seam. Keep `evaluateOpportunity()`’s signature; only the body should change when a **server-side** model is wired. The file has a TODO for Claude; **the body never reads the env key today**. Filling `EXPO_PUBLIC_CLAUDE_API_KEY` does nothing and would leak the key in the bundle.
+`src/services/evaluation.ts` is the client seam: it POSTs JSON to `/api/evaluate` and maps the response into `Evaluation`. Native/APK builds need `EXPO_PUBLIC_API_URL` (public base only — currently https://vetly--8ysj4vvefb.expo.app). Local web/dev can use a relative path when the Expo server export is running.
 
-**Claude context (honest).** Analyze already calls `evaluateOpportunity({ text, imageUri }, goal, profile)`. Today that means opportunity paste (plus a local screenshot URI if uploaded), the saved goal, and the premium profile object when one exists (grade, universities, career, activities, situation, resume filename/URI). The mock only keyword-scans the goal (focus / school / startup) and uses profile fields in form-help when the paste looks like an application. History is **not** in this call (History-tab `coherence.ts` only). Resume **bytes** are never read. When Claude is wired later it should receive opportunity text + goal + those premium onboarding fields so the eval is personalized; history/resume only if already on that payload or as a small safe add. Mock stays until a **server-side** key exists — never `EXPO_PUBLIC_` for secrets.
+`app/api/evaluate+api.ts` reads `OPENAI_API_KEY` (and optional `OPENAI_MODEL`, default **gpt-5.5** via `src/server/openaiModel.ts`). Secrets never ship in the client or this repo.
 
-Behavior:
+**Context sent to the model**
 
-1. Curated results for the three Evaluate examples (Hack Club **9**, MUN **7**, Climate Summit **4**), with copy that references goal hints (focus, school, startup).
-2. Generic fallback: deterministic hash of the paste → base score 5–8, nudged by high/low-signal phrases; insights drawn from pools.
-3. `looksLikeApplication()` (`src/services/formHelp.ts`) sets `hasApplication` and `formHelp` steps from the structured profile when present.
+- **Free:** opportunity text + goal (+ `hasScreenshot` flag). Resume bytes are never sent.
+- **Premium:** also grade, universities, dream career, activities, situation when the structured profile exists.
+- History is **not** in this call (History-tab `coherence.ts` only). Screenshot **image bytes** stay on device.
 
-`src/services/score.ts` maps the integer to label and color. `src/types/evaluation.ts` is the UI contract — a future Claude adapter should map into this shape inside `evaluation.ts`.
+`src/services/score.ts` maps the integer to label and color. `src/types/evaluation.ts` is the UI contract.
 
 ### RevenueCat
 
@@ -381,17 +413,21 @@ Vetly/
 │   ├── resume.tsx                Optional local resume file
 │   ├── settings.tsx              Restore, Customer Center, legal
 │   ├── legal.tsx                 About / Privacy / Terms
+│   ├── api/
+│   │   └── evaluate+api.ts       Server: OpenAI gpt-5.5 scoring
 │   └── (tabs)/
 │       ├── _layout.tsx           Home / History / Profile tab bar
 │       ├── home.tsx              Dashboard
 │       ├── history.tsx           Premium history + pattern card
 │       └── profile.tsx           Person page or guest goal
 ├── src/
+│   ├── server/
+│   │   └── openaiModel.ts        Default gpt-5.5 / OPENAI_MODEL
 │   ├── services/
-│   │   ├── evaluation.ts         Mock evaluateOpportunity
-│   │   ├── formHelp.ts           Application detection + form steps
+│   │   ├── evaluation.ts         Client POST → /api/evaluate
+│   │   ├── formHelp.ts           Application detection helpers
 │   │   ├── score.ts              1–10 → label and color
-│   │   ├── coherence.ts          Mock History pattern analysis
+│   │   ├── coherence.ts          History pattern analysis
 │   │   ├── purchases.ts          RevenueCat configure / buy / restore / paywall / Customer Center
 │   │   └── evaluationCloud.ts    Supabase upsert and fetch
 │   ├── storage/                  AsyncStorage helpers (goal, usage, premium, history, profile, auth)
@@ -400,6 +436,7 @@ Vetly/
 │   ├── config/demo.ts            DEMO_FORCE_FIRST_RUN
 │   ├── demo/resetDemoSession.ts  Recording reset + RC restore
 │   ├── types/evaluation.ts       Evaluation / Insight shapes
+│   ├── types/evaluateApi.ts      Request/response for /api/evaluate
 │   ├── content/legal.ts          About, privacy, terms copy
 │   ├── navigation/               Reset-to-Home helpers, query-param helper
 │   ├── theme/                    colors, typography, shadows
@@ -410,9 +447,9 @@ Vetly/
 ├── .github/                      CI workflow + issue templates
 ├── assets/images/                App icon, paywall hero
 ├── assets/screenshots/           1179×2556 PNGs (home, evaluate, results, paywall)
-├── app.json                      Name, scheme vetly, bundle id, EAS projectId
+├── app.json                      Name, scheme vetly, bundle id, EAS projectId, web output server
 ├── eas.json                      development / preview / production profiles
-├── .env.example                  Placeholder env names only
+├── .env.example                  Placeholder env names only (no secrets)
 └── package.json                  Scripts: start, typecheck, ci, run:android, eas:dev
 ```
 
@@ -428,18 +465,22 @@ npm ci
 npx expo start
 ```
 
-Copy `.env.example` → `.env`. Empty placeholders only. For sandbox IAP, put the RevenueCat **Test Store public** SDK key in `EXPO_PUBLIC_REVENUECAT_API_KEY` (never the secret REST key). Restart Metro after changing `.env`. Different networks: `npx expo start --tunnel`.
+Copy `.env.example` → `.env`. Empty placeholders only. For sandbox IAP, put the RevenueCat **Test Store public** SDK key in `EXPO_PUBLIC_REVENUECAT_API_KEY` (never the secret REST key). For APK scoring, set `EXPO_PUBLIC_API_URL` to the public API base (no trailing slash) and put `OPENAI_API_KEY` only on the **server** host (EAS Hosting / local API) — never in the client. Restart Metro after changing `.env`. Different networks: `npx expo start --tunnel`.
 
 | Variable | What it is |
 |---|---|
 | `EXPO_PUBLIC_SUPABASE_URL` | Project URL (`https://….supabase.co`). Optional. |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Publishable / anon key. Never `service_role`. |
 | `EXPO_PUBLIC_REVENUECAT_API_KEY` | Test Store **public** SDK key. Unused in Expo Go. Never the secret REST key. |
-| `EXPO_PUBLIC_CLAUDE_API_KEY` | Leave empty. The client mock does not call Claude. |
+| `EXPO_PUBLIC_API_URL` | Public scoring API base (URL only), e.g. `https://vetly--8ysj4vvefb.expo.app`. Never a key. |
+| `EXPO_PUBLIC_CLAUDE_API_KEY` | Leave empty (legacy). Do not put OpenAI or Claude secrets in `EXPO_PUBLIC_*`. |
+| `OPENAI_API_KEY` | **Server-only.** Used by `app/api/evaluate+api.ts`. Never commit a real value. |
+| `OPENAI_MODEL` | Optional server override; defaults to **gpt-5.5**. |
 | `REVENUECAT_SECRET` | Optional, **local catalog scripts only**. Never `EXPO_PUBLIC_`. Never commit a real value. |
 
-- **Expo Go** (`npx expo start`): JS app, guest reverse discovery. No IAP.
-- **Preview APK:** https://expo.dev/artifacts/eas/v6zZNBCjmp8m9B5LxjeYO6z7tJpYeRcPtYJvtyzRpK4.apk — native IAP / Test Store. Not Expo Go.
+- **Expo Go** (`npx expo start`): JS app; IAP unavailable. Scoring needs a reachable API.
+- **Preview APK:** https://expo.dev/artifacts/eas/RBdtHXWnuqIffU_9WB2NupNk04PthSau379P9p8-tJE.apk — live Evaluate + Test Store paywall. Not Expo Go. [Build page](https://expo.dev/accounts/vetly/projects/vetly/builds/f7a0322b-334c-405c-827f-304f09cc2cca).
+- **Web (Netlify):** https://vetly-f99d6523.netlify.app — UI preview only; **does not** run AI scoring yet.
 - **IAP locally:** a binary that includes native purchases, then `npx expo start --dev-client`.
 
 ```bash
@@ -506,20 +547,22 @@ Discovery apps keep showing more listings. Students already find internships, ha
 
 ### Challenges & learnings
 
-Expo Go cannot run native IAP, so Subscribe only works on a development / EAS build. RevenueCat Test Store is a real SDK purchase (`purchasePackage` / `presentPaywall` → entitlement `vetly_pro`), not a fake local unlock. Keeping Google/Apple sign-in honest (demo, not production auth) and leaving Claude as an on-device mock until a key can live on a server mattered more than polishing another feed. Optional Supabase had to stay best-effort so Analyze never depends on the network.
+Expo Go cannot run native IAP, so Subscribe only works on a development / EAS build. RevenueCat Test Store is a real SDK purchase (`purchasePackage` / `presentPaywall` → entitlement `vetly_pro`), not a fake local unlock — sandbox does not charge a real card. Keeping Google/Apple sign-in honest (demo, not production auth) and moving scoring to a **server-side** OpenAI key (never `EXPO_PUBLIC_`) mattered more than polishing another feed. Netlify static hosting cannot run the API route, so judges use the APK for live scoring. Optional Supabase stays best-effort so Analyze never depends on the cloud DB.
 
 ### What’s next
 
-Claude for live evaluations (**server-side** key, never `EXPO_PUBLIC_`). Same `vetly_pro` products on App Store / Play. Production auth can replace the simulated Google / Apple buttons without changing the guest path.
+Same `vetly_pro` products on App Store / Play. Wire AI scoring into a web host that can run the API (or keep EAS Hosting as the scoring backend for web). Production auth can replace the simulated Google / Apple buttons without changing the guest path.
 
 ### Links for Devpost fields
 
 - **GitHub:** https://github.com/Hassan-jamshaid-dev/Vetly
-- **Website / web demo:** https://vetly-f99d6523.netlify.app
-- **Android APK:** https://expo.dev/artifacts/eas/v6zZNBCjmp8m9B5LxjeYO6z7tJpYeRcPtYJvtyzRpK4.apk
+- **Website / web preview:** https://vetly-f99d6523.netlify.app (UI only — no AI scoring yet)
+- **Android APK:** https://expo.dev/artifacts/eas/RBdtHXWnuqIffU_9WB2NupNk04PthSau379P9p8-tJE.apk
+- **EAS build:** https://expo.dev/accounts/vetly/projects/vetly/builds/f7a0322b-334c-405c-827f-304f09cc2cca
+- **Scoring API base:** https://vetly--8ysj4vvefb.expo.app (no secrets)
 - **Screenshots:** `assets/screenshots/` (home, evaluate, results, paywall — 1179×2556, no device frame)
 - **Video:** paste your Devpost video URL here after you upload it. **You must add the video on Devpost; this project does not include one.**
-- **Claude:** on-device mock. Not live.
+- **Scoring:** OpenAI **gpt-5.5** via server. Key not in app or repo.
 
 ### Before you click Submit
 

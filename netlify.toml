@@ -1,5 +1,6 @@
 [build]
-  publish = "dist"
+  # Server export puts the SPA under dist/client (API lives in dist/server; Netlify static cannot run it).
+  publish = "dist/client"
 
 [[redirects]]
   from = "/*"
