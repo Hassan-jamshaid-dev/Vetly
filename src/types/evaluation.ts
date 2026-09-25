@@ -48,8 +48,10 @@ export interface Evaluation {
 }
 
 export interface EvaluationInput {
-  /** What the user typed or pasted. May be empty when only an image is given. */
+  /** What the user typed or pasted. May be empty when only an image/PDF is given. */
   text: string;
   /** Local URI of an uploaded screenshot, if any. */
   imageUri?: string | null;
+  /** Local URI of an Evaluate-only PDF listing, if any. Never a resume file. */
+  pdfUri?: string | null;
 }

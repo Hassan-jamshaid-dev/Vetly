@@ -7,6 +7,10 @@ import { GradientButton } from '@/components/GradientButton';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { SettingsRow } from '@/components/SettingsRow';
 import {
+  REVENUECAT_KEY_MISSING_BODY,
+  REVENUECAT_KEY_MISSING_TITLE,
+} from '@/content/revenueCatCopy';
+import {
   hasPublicRevenueCatApiKey,
   isCustomerCenterAvailable,
   isNativePurchasesAvailable,
@@ -74,10 +78,7 @@ export default function SettingsScreen() {
       return;
     }
     if (!hasPublicRevenueCatApiKey()) {
-      showAlert(
-        'RevenueCat key missing',
-        'Add the Test Store public SDK key to EXPO_PUBLIC_REVENUECAT_API_KEY in .env, then restart Metro.',
-      );
+      showAlert(REVENUECAT_KEY_MISSING_TITLE, REVENUECAT_KEY_MISSING_BODY);
       return;
     }
 
@@ -90,10 +91,7 @@ export default function SettingsScreen() {
         return;
       }
       if (restored === 'no_key') {
-        showAlert(
-          'RevenueCat key missing',
-          'Add the Test Store public SDK key to EXPO_PUBLIC_REVENUECAT_API_KEY in .env, then restart Metro.',
-        );
+        showAlert(REVENUECAT_KEY_MISSING_TITLE, REVENUECAT_KEY_MISSING_BODY);
         return;
       }
       if (restored === 'none') {
@@ -122,10 +120,7 @@ export default function SettingsScreen() {
         return;
       }
       if (result === 'no_key') {
-        showAlert(
-          'RevenueCat key missing',
-          'Add the Test Store public SDK key to EXPO_PUBLIC_REVENUECAT_API_KEY in .env, then restart Metro.',
-        );
+        showAlert(REVENUECAT_KEY_MISSING_TITLE, REVENUECAT_KEY_MISSING_BODY);
         return;
       }
       if (result === 'failed') {

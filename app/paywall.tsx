@@ -18,6 +18,10 @@ import { GradientButton } from '@/components/GradientButton';
 import { PaywallDecor } from '@/components/decor/PaywallDecor';
 import { VMark } from '@/components/VMark';
 import {
+  REVENUECAT_KEY_MISSING_BODY,
+  REVENUECAT_KEY_MISSING_TITLE,
+} from '@/content/revenueCatCopy';
+import {
   hasCurrentOfferingPackages,
   hasPublicRevenueCatApiKey,
   isNativePurchasesAvailable,
@@ -122,10 +126,7 @@ export default function PaywallScreen() {
     }
     if (result === 'cancelled') return true;
     if (result === 'no_key') {
-      showAlert(
-        'RevenueCat key missing',
-        'Add the Test Store public SDK key to EXPO_PUBLIC_REVENUECAT_API_KEY in .env (never the secret REST key), then restart Metro.',
-      );
+      showAlert(REVENUECAT_KEY_MISSING_TITLE, REVENUECAT_KEY_MISSING_BODY);
       return true;
     }
     return false;
@@ -140,10 +141,7 @@ export default function PaywallScreen() {
     }
 
     if (!hasPublicRevenueCatApiKey()) {
-      showAlert(
-        'RevenueCat key missing',
-        'Add the Test Store public SDK key to EXPO_PUBLIC_REVENUECAT_API_KEY in .env (never the secret REST key), then restart Metro.',
-      );
+      showAlert(REVENUECAT_KEY_MISSING_TITLE, REVENUECAT_KEY_MISSING_BODY);
       return;
     }
 
@@ -186,10 +184,7 @@ export default function PaywallScreen() {
       return;
     }
     if (!hasPublicRevenueCatApiKey()) {
-      showAlert(
-        'RevenueCat key missing',
-        'Add the Test Store public SDK key to EXPO_PUBLIC_REVENUECAT_API_KEY in .env, then restart Metro.',
-      );
+      showAlert(REVENUECAT_KEY_MISSING_TITLE, REVENUECAT_KEY_MISSING_BODY);
       return;
     }
 
@@ -235,10 +230,7 @@ export default function PaywallScreen() {
         return;
       }
       if (restored === 'no_key') {
-        showAlert(
-          'RevenueCat key missing',
-          'Add the Test Store public SDK key to EXPO_PUBLIC_REVENUECAT_API_KEY in .env, then restart Metro.',
-        );
+        showAlert(REVENUECAT_KEY_MISSING_TITLE, REVENUECAT_KEY_MISSING_BODY);
         return;
       }
       if (restored === 'none') {

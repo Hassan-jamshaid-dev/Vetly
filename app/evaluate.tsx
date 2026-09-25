@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -29,11 +30,12 @@ import { setCurrentEvaluation } from '@/store/evaluationStore';
 import { colors } from '@/theme/colors';
 import { fonts, type } from '@/theme/typography';
 import { showAlert } from '@/utils/dialog';
+import { isUrlOnlySubmission, URL_ONLY_MESSAGE } from '@/utils/urlOnly';
 
 const MAX_CHARS = 2000;
 
 const INPUT_PLACEHOLDER =
-  'Paste a link or describe the internship, hackathon, MUN, or society.';
+  'Paste the listing text, or describe the internship, hackathon, MUN, or society.';
 
 // Example opportunities users can tap to fill the textarea.
 const EXAMPLES = [
@@ -60,6 +62,11 @@ const EXAMPLES = [
   },
 ] as const;
 
+type PdfAttachment = {
+  uri: string;
+  name: string;
+};
+
 // Stack screen: evaluate an opportunity. Lives above the tabs so Home stays a dashboard.
 export default function EvaluateScreen() {
   const router = useRouter();
@@ -67,6 +74,7 @@ export default function EvaluateScreen() {
 
   const [text, setText] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [pdf, setPdf] = useState<PdfAttachment | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [isPremium, setIsPremium] = useState(false);
@@ -94,7 +102,8 @@ export default function EvaluateScreen() {
   );
 
   const trimmed = text.trim();
-  const canAnalyze = (trimmed.length > 0 || imageUri !== null) && !isAnalyzing;
+  const canAnalyze =
+    (trimmed.length > 0 || imageUri !== null || pdf !== null) && !isAnalyzing;
 
   const goHome = () => {
     if (router.canGoBack()) router.back();
@@ -103,6 +112,12 @@ export default function EvaluateScreen() {
 
   const handleAnalyze = async () => {
     if (analyzingRef.current || !canAnalyze) return;
+
+    if (trimmed && isUrlOnlySubmission(trimmed) && !imageUri && !pdf) {
+      showAlert('Paste the listing', URL_ONLY_MESSAGE);
+      return;
+    }
+
     analyzingRef.current = true;
     Keyboard.dismiss();
 
@@ -123,7 +138,7 @@ export default function EvaluateScreen() {
       const [goal, profile] = await Promise.all([getGoal(), getProfile()]);
       // Free: goal only. Premium: goal + profile fields (no resume bytes).
       const evaluation = await evaluateOpportunity(
-        { text: trimmed, imageUri },
+        { text: trimmed, imageUri, pdfUri: pdf?.uri ?? null },
         goal ?? '',
         premium ? profile : null,
       );
@@ -170,15 +185,38 @@ export default function EvaluateScreen() {
       });
       if (!result.canceled && result.assets[0]?.uri) {
         setImageUri(result.assets[0].uri);
+        // One attachment primary path: clear PDF so we do not mix resume/eval confusion.
+        setPdf(null);
       }
     } catch {
       showAlert('Could not open photos', 'Please try again.');
     }
   };
 
-  const handleExample = (description: string, url: string) => {
+  const handlePickPdf = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset?.uri) return;
+      setPdf({
+        uri: asset.uri,
+        name: asset.name?.trim() || 'Listing.pdf',
+      });
+      setImageUri(null);
+    } catch {
+      showAlert('Could not open PDF picker', 'Please try again, or paste the listing text.');
+    }
+  };
+
+  const handleExample = (description: string) => {
     Keyboard.dismiss();
-    setText(`${description}\n${url}`);
+    // Examples fill listing text only — never a bare URL (URLs are not fetched).
+    setText(description);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
 
@@ -251,7 +289,18 @@ export default function EvaluateScreen() {
             style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
           >
             <Ionicons name="image-outline" size={18} color={colors.purple} />
-            <Text style={styles.pillLabel}>Upload screenshot</Text>
+            <Text style={styles.pillLabel}>Screenshot</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handlePickPdf}
+            disabled={isAnalyzing}
+            accessibilityRole="button"
+            accessibilityLabel="Upload listing PDF"
+            style={({ pressed }) => [styles.pill, styles.pillGap, pressed && styles.pressed]}
+          >
+            <Ionicons name="document-outline" size={18} color={colors.purple} />
+            <Text style={styles.pillLabel}>PDF</Text>
           </Pressable>
 
           {imageUri ? (
@@ -268,6 +317,23 @@ export default function EvaluateScreen() {
               </Pressable>
             </View>
           ) : null}
+
+          {pdf ? (
+            <View style={styles.pdfChip}>
+              <Ionicons name="document-text-outline" size={16} color={colors.purple} />
+              <Text style={styles.pdfName} numberOfLines={1}>
+                {pdf.name}
+              </Text>
+              <Pressable
+                onPress={() => setPdf(null)}
+                hitSlop={14}
+                accessibilityRole="button"
+                accessibilityLabel="Remove PDF"
+              >
+                <Ionicons name="close" size={14} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+          ) : null}
         </View>
 
         <Text style={styles.sectionHeading}>Examples</Text>
@@ -278,7 +344,7 @@ export default function EvaluateScreen() {
               icon={example.icon}
               title={example.title}
               url={example.url}
-              onPress={() => handleExample(example.description, example.url)}
+              onPress={() => handleExample(example.description)}
             />
           ))}
         </View>
@@ -319,7 +385,9 @@ const styles = StyleSheet.create({
   uploadRow: {
     marginTop: 20,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
+    gap: 10,
   },
   pill: {
     height: 44,
@@ -330,6 +398,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  pillGap: {},
   pillLabel: {
     marginLeft: 8,
     fontFamily: fonts.medium,
@@ -338,7 +407,6 @@ const styles = StyleSheet.create({
     color: colors.purple,
   },
   thumbWrap: {
-    marginLeft: 14,
     width: 64,
     height: 64,
   },
@@ -361,6 +429,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.white,
+  },
+  pdfChip: {
+    maxWidth: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.backgroundSoft,
+  },
+  pdfName: {
+    flexShrink: 1,
+    maxWidth: 140,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textPrimary,
   },
   sectionHeading: {
     ...type.label,

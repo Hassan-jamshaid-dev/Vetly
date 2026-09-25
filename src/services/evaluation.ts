@@ -10,9 +10,14 @@ import type {
   EvaluateRequestBody,
 } from '@/types/evaluateApi';
 import type { Evaluation, EvaluationInput } from '@/types/evaluation';
+import { guessImageMime, readLocalBase64 } from '@/utils/readLocalBase64';
+import { isUrlOnlySubmission, URL_ONLY_MESSAGE } from '@/utils/urlOnly';
 
 /** Relative path — works for local web/dev when EXPO_PUBLIC_API_URL is unset. */
 const EVALUATE_PATH = '/api/evaluate';
+
+/** Rough cap so phone uploads stay reasonable for the edge route. */
+const MAX_BASE64_CHARS = 3_500_000;
 
 /**
  * Native/APK builds need an absolute URL (phones cannot reach localhost).
@@ -35,19 +40,54 @@ export async function evaluateOpportunity(
   profile: StudentProfile | null = null,
 ): Promise<Evaluation> {
   const text = typeof input?.text === 'string' ? input.text : '';
-  const hasScreenshot = Boolean(input?.imageUri);
+  const imageUri = typeof input?.imageUri === 'string' ? input.imageUri : null;
+  const pdfUri = typeof input?.pdfUri === 'string' ? input.pdfUri : null;
+  const hasScreenshot = Boolean(imageUri);
+  const hasPdf = Boolean(pdfUri);
 
-  if (!text.trim() && !hasScreenshot) {
-    throw new Error('Paste an opportunity or upload a screenshot first.');
+  if (!text.trim() && !hasScreenshot && !hasPdf) {
+    throw new Error('Paste an opportunity, upload a screenshot, or pick a PDF first.');
+  }
+  if (text.trim() && isUrlOnlySubmission(text) && !hasScreenshot && !hasPdf) {
+    throw new Error(URL_ONLY_MESSAGE);
   }
   if (!goal.trim()) {
     throw new Error('Save a goal before analyzing an opportunity.');
+  }
+
+  let screenshotBase64: string | null = null;
+  let screenshotMimeType: string | null = null;
+  if (imageUri) {
+    try {
+      screenshotBase64 = await readLocalBase64(imageUri);
+      screenshotMimeType = guessImageMime(imageUri);
+    } catch {
+      throw new Error('Could not read the screenshot. Try another image.');
+    }
+    if (!screenshotBase64 || screenshotBase64.length > MAX_BASE64_CHARS) {
+      throw new Error('That screenshot is too large. Try a smaller image.');
+    }
+  }
+
+  let pdfBase64: string | null = null;
+  if (pdfUri) {
+    try {
+      pdfBase64 = await readLocalBase64(pdfUri);
+    } catch {
+      throw new Error('Could not read the PDF. Try another file.');
+    }
+    if (!pdfBase64 || pdfBase64.length > MAX_BASE64_CHARS) {
+      throw new Error('That PDF is too large. Try a smaller file or paste the text.');
+    }
   }
 
   const body: EvaluateRequestBody = {
     opportunityText: text.trim(),
     goal: goal.trim(),
     hasScreenshot,
+    screenshotBase64,
+    screenshotMimeType,
+    pdfBase64,
     profile: profile ? toProfilePayload(profile) : null,
   };
 
