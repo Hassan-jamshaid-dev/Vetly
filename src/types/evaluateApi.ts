@@ -13,6 +13,8 @@ export type EvaluateProfilePayload = {
 export type EvaluateRequestBody = {
   opportunityText: string;
   goal: string;
+  /** Optional display name (free + premium). Older APKs may omit this. */
+  displayName?: string | null;
   /** Present only for premium users with a saved profile. */
   profile?: EvaluateProfilePayload | null;
   /** True when a screenshot was attached (bytes may also be in screenshotBase64). */

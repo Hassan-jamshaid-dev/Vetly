@@ -38,6 +38,7 @@ export async function evaluateOpportunity(
   input: EvaluationInput,
   goal: string,
   profile: StudentProfile | null = null,
+  displayName: string | null = null,
 ): Promise<Evaluation> {
   const text = typeof input?.text === 'string' ? input.text : '';
   const imageUri = typeof input?.imageUri === 'string' ? input.imageUri : null;
@@ -84,6 +85,7 @@ export async function evaluateOpportunity(
   const body: EvaluateRequestBody = {
     opportunityText: text.trim(),
     goal: goal.trim(),
+    displayName: displayName?.trim() ? displayName.trim().slice(0, 80) : null,
     hasScreenshot,
     screenshotBase64,
     screenshotMimeType,

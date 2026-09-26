@@ -23,6 +23,7 @@ import { saveEvaluationRemote } from '@/services/evaluationCloud';
 import { getGoal } from '@/storage/goalStorage';
 import { appendHistory } from '@/storage/historyStorage';
 import { getIsPremium } from '@/storage/premiumStorage';
+import { getDisplayName } from '@/storage/nameStorage';
 import { getProfile } from '@/storage/profileStorage';
 import { consumeOne, getRemainingToday } from '@/storage/usageStorage';
 import { setCurrentEvaluation } from '@/store/evaluationStore';
@@ -127,12 +128,17 @@ export default function EvaluateScreen() {
       }
 
       setIsAnalyzing(true);
-      const [goal, profile] = await Promise.all([getGoal(), getProfile()]);
-      // Free: goal only. Premium: goal + profile fields (no resume bytes).
+      const [goal, profile, displayName] = await Promise.all([
+        getGoal(),
+        getProfile(),
+        getDisplayName(),
+      ]);
+      // Free: name + goal. Premium: also profile fields (no resume bytes).
       const evaluation = await evaluateOpportunity(
         { text: trimmed, imageUri },
         goal ?? '',
         premium ? profile : null,
+        displayName,
       );
 
       if (premium) {
