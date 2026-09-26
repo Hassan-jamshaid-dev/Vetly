@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     if (combinedText.length > 12000) {
       return jsonError('Opportunity text is too long.', 400);
     }
-    if (goal.length > 2000) {
+    if (goal.length > 5000) {
       return jsonError('Goal text is too long.', 400);
     }
     if (screenshotBase64 && screenshotBase64.length > MAX_BASE64_CHARS) {
@@ -151,7 +151,7 @@ function sanitizeProfile(raw: unknown): EvaluateProfilePayload | null {
     universities,
     dreamCareer: typeof p.dreamCareer === 'string' ? p.dreamCareer.slice(0, 200) : '',
     activities: typeof p.activities === 'string' ? p.activities.slice(0, 1500) : '',
-    situation: typeof p.situation === 'string' ? p.situation.slice(0, 1500) : '',
+    situation: typeof p.situation === 'string' ? p.situation.slice(0, 5000) : '',
   };
 }
 

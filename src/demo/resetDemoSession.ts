@@ -7,6 +7,7 @@ import {
 import { clearAuth } from '@/storage/authStorage';
 import { clearGoal } from '@/storage/goalStorage';
 import { clearHistory } from '@/storage/historyStorage';
+import { clearDisplayName } from '@/storage/nameStorage';
 import { setIsPremium } from '@/storage/premiumStorage';
 import { clearProfile } from '@/storage/profileStorage';
 import { resetUsage } from '@/storage/usageStorage';
@@ -23,6 +24,7 @@ export async function resetDemoSession(): Promise<void> {
       clearHistory(),
       clearGoal(),
       clearProfile(),
+      clearDisplayName(),
       signOutSupabase(),
     ]);
   } catch {

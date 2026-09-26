@@ -21,4 +21,4 @@ function looksLikeUrl(value: string): boolean {
 }
 
 export const URL_ONLY_MESSAGE =
-  'Paste the listing text, a screenshot, or a PDF. Vetly does not open or score links.';
+  'Paste the listing text or a screenshot. Vetly does not open or score links.';

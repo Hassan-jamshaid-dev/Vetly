@@ -21,10 +21,10 @@ import { StickyBottomButton } from '@/components/StickyBottomButton';
 import { VMark } from '@/components/VMark';
 import { Blob } from '@/components/decor/Blob';
 import { firstQueryParam } from '@/navigation/queryParam';
-import { getGoal, setGoal } from '@/storage/goalStorage';
+import { setGoal } from '@/storage/goalStorage';
+import { getDisplayName, setDisplayName } from '@/storage/nameStorage';
 import {
   getProfile,
-  profileToGoalText,
   setProfile,
   type StudentProfile,
 } from '@/storage/profileStorage';
@@ -45,10 +45,13 @@ const GRADE_LEVELS = [
 ] as const;
 
 const FIELD_MAX = 2000;
-const SITUATION_MIN = 20;
+/** Premium goal (situation): character floor/ceiling — not a word count. */
+const SITUATION_MIN = 500;
+const SITUATION_MAX = 5000;
 const CAREER_MAX = 80;
 const UNI_NAME_MAX = 80;
 const UNI_CHIP_MAX = 8;
+const NAME_MAX = 80;
 
 type FieldHeaderProps = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -115,6 +118,7 @@ export default function PremiumOnboardingScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string | string[] }>();
   const isEdit = firstQueryParam(mode) === 'edit';
 
+  const [displayName, setDisplayNameState] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
   const [gradeOpen, setGradeOpen] = useState(false);
   const [universities, setUniversities] = useState<string[]>([]);
@@ -128,13 +132,15 @@ export default function PremiumOnboardingScreen() {
   // Coming back from Resume should not wipe what they already typed.
   useEffect(() => {
     let cancelled = false;
-    getProfile().then((saved) => {
-      if (cancelled || !saved) return;
+    Promise.all([getProfile(), getDisplayName()]).then(([saved, savedName]) => {
+      if (cancelled) return;
+      if (savedName) setDisplayNameState(savedName);
+      if (!saved) return;
       setGradeLevel(saved.gradeLevel);
       setUniversities(mergeUniversityNames([], saved.universities.join(',')));
       setDreamCareer(saved.dreamCareer.slice(0, CAREER_MAX));
-      setActivities(saved.activities);
-      setSituation(saved.situation);
+      setActivities(saved.activities.slice(0, FIELD_MAX));
+      setSituation(saved.situation.slice(0, SITUATION_MAX));
     });
     return () => {
       cancelled = true;
@@ -142,12 +148,17 @@ export default function PremiumOnboardingScreen() {
   }, []);
 
   const situationLen = situation.length;
+  const situationTrimmed = situation.trim().length;
   const activitiesLen = activities.length;
+  const situationOver = situationTrimmed > SITUATION_MAX;
+  const situationUnder = situationTrimmed < SITUATION_MIN;
   const canContinue =
+    displayName.trim().length > 0 &&
     gradeLevel.length > 0 &&
     dreamCareer.trim().length > 0 &&
     activities.trim().length > 0 &&
-    situation.trim().length >= SITUATION_MIN &&
+    !situationUnder &&
+    !situationOver &&
     !saving;
 
   const addUniversities = (raw: string) => {
@@ -187,11 +198,9 @@ export default function PremiumOnboardingScreen() {
         resumeName: existing?.resumeName ?? null,
       };
       await setProfile(profile);
-      // Do not overwrite a goal they already wrote. Fill one only if Analyze has none.
-      const existingGoal = await getGoal();
-      if (!existingGoal) {
-        await setGoal(profileToGoalText(profile));
-      }
+      await setDisplayName(displayName.trim());
+      // Keep Analyze goal in sync with the premium situation narrative (500–5000).
+      await setGoal(profile.situation);
       // Editing from Profile should land back on the person page, not Resume.
       if (isEdit) {
         if (router.canGoBack()) router.back();
@@ -241,6 +250,29 @@ export default function PremiumOnboardingScreen() {
               ? 'Grade, career, and situation used when Vetly evaluates opportunities for you.'
               : 'Grade, career, and situation — one step at a time. Premium uses this when it evaluates opportunities for you.'}
           </Text>
+
+            <FieldHeader
+              icon="person-outline"
+              label="Your Name"
+              infoTitle="Your Name"
+              infoMessage="Shown on your profile on this device. No account required."
+            />
+            <Card radius={20} padding={0} style={styles.fieldCard}>
+              <View style={styles.inputRow}>
+                <Ionicons name="person-outline" size={18} color={colors.placeholder} />
+                <TextInput
+                  value={displayName}
+                  onChangeText={(value) => setDisplayNameState(value.slice(0, NAME_MAX))}
+                  placeholder="First name or nickname"
+                  placeholderTextColor={colors.placeholder}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  maxLength={NAME_MAX}
+                  style={styles.singleInput}
+                  accessibilityLabel="Your name"
+                />
+              </View>
+            </Card>
 
             <FieldHeader
               icon="school-outline"
@@ -351,28 +383,37 @@ export default function PremiumOnboardingScreen() {
               icon="locate-outline"
               label="Your Situation and Goals"
               infoTitle="Your Situation and Goals"
-              infoMessage="Where you are now, what you want next, and any constraints Vetly should know when it evaluates opportunities."
+              infoMessage="Where you are now, what you want next, and any constraints Vetly should know when it evaluates opportunities. 500–5000 characters."
             />
+            <Text style={styles.limitCaption}>
+              {SITUATION_MIN}–{SITUATION_MAX} characters
+            </Text>
             <MultilineField
               value={situation}
-              onChangeText={(value) => setSituation(value.slice(0, FIELD_MAX))}
-              maxLength={FIELD_MAX}
+              onChangeText={(value) => setSituation(value.slice(0, SITUATION_MAX))}
+              maxLength={SITUATION_MAX}
               minHeight={110}
               placeholder="Where you are now, what you want next, and any constraints Vetly should know."
               accessibilityLabel="Situation and goals"
               hint={
-                situationLen > 0 && situation.trim().length < SITUATION_MIN
-                  ? `At least ${SITUATION_MIN} characters.`
-                  : undefined
+                situationOver
+                  ? `Please trim to ${SITUATION_MAX} characters.`
+                  : situationLen > 0 && situationUnder
+                    ? `At least ${SITUATION_MIN} characters.`
+                    : undefined
               }
               counter={
                 <Text
                   style={[
                     styles.counter,
-                    situationLen >= SITUATION_MIN ? styles.counterOk : styles.counterMuted,
+                    situationOver
+                      ? styles.counterError
+                      : situationTrimmed >= SITUATION_MIN
+                        ? styles.counterOk
+                        : styles.counterMuted,
                   ]}
                 >
-                  {situationLen}/{FIELD_MAX}
+                  {situationLen}/{SITUATION_MAX}
                 </Text>
               }
             />
@@ -548,6 +589,18 @@ const styles = StyleSheet.create({
   },
   counterOk: {
     color: colors.success,
+  },
+  counterError: {
+    color: colors.danger,
+  },
+  limitCaption: {
+    marginBottom: 10,
+    marginLeft: 2,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
+    fontVariant: ['tabular-nums'],
   },
   pressed: {
     opacity: 0.72,

@@ -1,112 +1,134 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, Keyboard, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  InteractionManager,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type ScrollView,
+} from 'react-native';
 
+import { Card } from '@/components/Card';
 import { MultilineField } from '@/components/MultilineField';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { StickyBottomButton } from '@/components/StickyBottomButton';
-import { WordCounter, countWords } from '@/components/WordCounter';
 import { firstQueryParam } from '@/navigation/queryParam';
 import { useResetToHome } from '@/navigation/useResetToHome';
 import { getGoal, setGoal } from '@/storage/goalStorage';
+import { getDisplayName, setDisplayName } from '@/storage/nameStorage';
 import { getIsPremium } from '@/storage/premiumStorage';
 import { colors } from '@/theme/colors';
 import { fonts } from '@/theme/typography';
 
-/** Premium still uses a word floor; free uses characters only. */
-const PREMIUM_MIN_WORDS = 20;
-const PREMIUM_MAX_WORDS = 2000;
-/** Generous paste cap so Premium cannot dump a novel (~10 chars per word). */
-const PREMIUM_MAX_CHARS = PREMIUM_MAX_WORDS * 10;
-/** Free tier: character floor/ceiling (a single long token is one "word"). */
+/** Free tier: character floor/ceiling. */
 const FREE_MIN_CHARS = 300;
 const FREE_MAX_CHARS = 1000;
+const NAME_MAX = 80;
 
 const PLACEHOLDER_TEXT =
   'Example: I am a Grade 11 student aiming for top universities like Waterloo and MIT. I want to study Computer Engineering and eventually found a tech startup. Right now I am building my profile through extracurriculars and self-learning programming and AI. I care more about shipping projects I can show than collecting certificates, and I want to know which opportunities actually move that story forward.';
 
 // Screen 3: Goal. Free onboarding + "Edit your goal" (Profile / Settings).
-// Free: 300–1000 characters. Premium: 20–2000 words. Not premium-onboarding.
+// Free: 300–1000 characters. Premium users are redirected to premium-onboarding.
 export default function GoalScreen() {
   const router = useRouter();
   const resetToHome = useResetToHome();
   const { mode } = useLocalSearchParams<{ mode?: string | string[] }>();
   const isEdit = firstQueryParam(mode) === 'edit';
 
+  const [name, setName] = useState('');
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
-  const [isPremium, setIsPremium] = useState(false);
   const [tierReady, setTierReady] = useState(false);
+  const [keyboardPad, setKeyboardPad] = useState(0);
   // Guards against a second tap landing while the first save is still running.
   const savingRef = useRef(false);
+  const nameInputRef = useRef<TextInput>(null);
   const goalInputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const goalBlockY = useRef(0);
 
-  // Until Premium is known, use the larger cap so a stored 2000-word goal is
-  // not truncated by TextInput maxLength={1000} on the first paint after Upgrade.
-  const inputMaxLength = isPremium || !tierReady ? PREMIUM_MAX_CHARS : FREE_MAX_CHARS;
-
-  // Re-read Premium on focus so Edit your goal picks up 2000 words right after Upgrade.
+  // Premium users edit the structured profile, not this free goal screen.
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      getIsPremium().then((value) => {
+      getIsPremium().then((premium) => {
         if (cancelled) return;
-        setIsPremium(value);
+        if (premium) {
+          router.replace({ pathname: '/premium-onboarding', params: { mode: 'edit' } });
+          return;
+        }
         setTierReady(true);
       });
       return () => {
         cancelled = true;
       };
-    }, []),
+    }, [router]),
   );
 
-  // Native only: delayed programmatic focus after Get Started. On web that
-  // focus() runs outside the user-gesture window, so the IME never opens and
-  // the next tap looks "dead". Web relies on a real tap on the textarea.
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS === 'web') return;
-      let cancelled = false;
-      const task = InteractionManager.runAfterInteractions(() => {
-        requestAnimationFrame(() => {
-          if (!cancelled) goalInputRef.current?.focus();
-        });
-      });
-      return () => {
-        cancelled = true;
-        task.cancel();
-      };
-    }, []),
-  );
-
-  // Prefill after the Premium cap is known so maxLength cannot clip a long
-  // Premium goal. Also prefill on first-run when a goal was kept across launches.
+  // Prefill name + goal once we know this is the free path.
   useEffect(() => {
     if (!tierReady) return;
     let cancelled = false;
-    getGoal().then((saved) => {
-      if (!cancelled && saved) setText(saved);
+    Promise.all([getGoal(), getDisplayName()]).then(([savedGoal, savedName]) => {
+      if (cancelled) return;
+      if (savedGoal) setText(savedGoal);
+      if (savedName) setName(savedName);
     });
     return () => {
       cancelled = true;
     };
   }, [tierReady]);
 
-  const words = useMemo(() => countWords(text), [text]);
+  // Keep the focused goal field (and caret) above the keyboard.
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = Keyboard.addListener(showEvent, (event) => {
+      const height = event.endCoordinates?.height ?? 0;
+      // Android already resizes the window; only add scroll padding on iOS.
+      if (Platform.OS === 'ios') setKeyboardPad(height);
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, goalBlockY.current - 12),
+          animated: true,
+        });
+      });
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => setKeyboardPad(0));
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
+  }, []);
+
+  // Native only: focus the name field once after Get Started. Web relies on a
+  // real tap so the IME opens inside a user gesture.
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'web' || !tierReady) return;
+      let cancelled = false;
+      const task = InteractionManager.runAfterInteractions(() => {
+        requestAnimationFrame(() => {
+          if (!cancelled) nameInputRef.current?.focus();
+        });
+      });
+      return () => {
+        cancelled = true;
+        task.cancel();
+      };
+    }, [tierReady]),
+  );
+
   const chars = text.length;
   const trimmedChars = text.trim().length;
-  // Free: 300–1000 characters. Premium: 20–2000 words (no 1000-char cap).
-  const overLimit = !tierReady
-    ? false
-    : isPremium
-      ? words > PREMIUM_MAX_WORDS
-      : trimmedChars > FREE_MAX_CHARS;
-  const underMin = !tierReady
-    ? false
-    : isPremium
-      ? words < PREMIUM_MIN_WORDS
-      : trimmedChars < FREE_MIN_CHARS;
-  const canContinue = tierReady && !underMin && !overLimit && !saving;
+  const nameOk = name.trim().length > 0;
+  const overLimit = tierReady && trimmedChars > FREE_MAX_CHARS;
+  const underMin = tierReady && trimmedChars < FREE_MIN_CHARS;
+  const canContinue = tierReady && nameOk && !underMin && !overLimit && !saving;
   const freeCounterColor =
     trimmedChars > FREE_MAX_CHARS
       ? colors.danger
@@ -115,13 +137,18 @@ export default function GoalScreen() {
         : colors.muted;
   const hintText = !tierReady
     ? `At least ${FREE_MIN_CHARS} characters.`
-    : isPremium
-      ? overLimit
-        ? `Please trim to ${PREMIUM_MAX_WORDS} words.`
-        : `At least ${PREMIUM_MIN_WORDS} words.`
-      : overLimit
-        ? `Please trim to ${FREE_MAX_CHARS} characters.`
-        : `At least ${FREE_MIN_CHARS} characters.`;
+    : overLimit
+      ? `Please trim to ${FREE_MAX_CHARS} characters.`
+      : `At least ${FREE_MIN_CHARS} characters.`;
+
+  const scrollGoalIntoView = () => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, goalBlockY.current - 12),
+        animated: true,
+      });
+    });
+  };
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -141,19 +168,12 @@ export default function GoalScreen() {
     setSaving(true);
     Keyboard.dismiss();
     try {
-      const premium = await getIsPremium();
       const trimmed = text.trim();
-      if (premium) {
-        const wordCount = countWords(trimmed);
-        if (wordCount < PREMIUM_MIN_WORDS || wordCount > PREMIUM_MAX_WORDS) {
-          setIsPremium(true);
-          return;
-        }
-      } else if (trimmed.length < FREE_MIN_CHARS || trimmed.length > FREE_MAX_CHARS) {
-        setIsPremium(false);
+      const trimmedName = name.trim();
+      if (!trimmedName || trimmed.length < FREE_MIN_CHARS || trimmed.length > FREE_MAX_CHARS) {
         return;
       }
-      setIsPremium(premium);
+      await setDisplayName(trimmedName);
       await setGoal(trimmed);
       if (isEdit) {
         if (router.canGoBack()) router.back();
@@ -173,7 +193,8 @@ export default function GoalScreen() {
     <ScreenWrapper
       keyboard
       onBack={handleBack}
-      contentContainerStyle={styles.body}
+      scrollRef={scrollRef}
+      contentContainerStyle={[styles.body, { paddingBottom: 24 + keyboardPad }]}
       footer={
         <StickyBottomButton
           label={saving ? 'Saving...' : isEdit ? 'Save' : 'Continue'}
@@ -187,33 +208,53 @@ export default function GoalScreen() {
         Where you are now, and where you want to go. Vetly scores every opportunity against this.
       </Text>
 
-      <View style={styles.field}>
+      <Text style={styles.nameLabel}>Your name</Text>
+      <Card radius={20} padding={0} style={styles.nameCard}>
+        <TextInput
+          ref={nameInputRef}
+          value={name}
+          onChangeText={(value) => setName(value.slice(0, NAME_MAX))}
+          placeholder="First name or nickname"
+          placeholderTextColor={colors.placeholder}
+          autoCapitalize="words"
+          autoCorrect={false}
+          maxLength={NAME_MAX}
+          returnKeyType="next"
+          onSubmitEditing={() => goalInputRef.current?.focus()}
+          style={styles.nameInput}
+          accessibilityLabel="Your name"
+        />
+      </Card>
+
+      <View
+        style={styles.field}
+        onLayout={(event) => {
+          goalBlockY.current = event.nativeEvent.layout.y;
+        }}
+      >
         <Text style={[styles.limitCaption, overLimit && styles.hintError]}>
-          {!tierReady || !isPremium
-            ? `${FREE_MIN_CHARS}–${FREE_MAX_CHARS} characters`
-            : `${PREMIUM_MIN_WORDS}–${PREMIUM_MAX_WORDS} words`}
+          {FREE_MIN_CHARS}–{FREE_MAX_CHARS} characters
         </Text>
         <MultilineField
           ref={goalInputRef}
           value={text}
           onChangeText={setText}
-          maxLength={inputMaxLength}
+          maxLength={FREE_MAX_CHARS}
           minHeight={220}
           placeholder={PLACEHOLDER_TEXT}
           autoCorrect
           autoCapitalize="sentences"
           accessibilityLabel="Describe your goals"
+          onFocus={scrollGoalIntoView}
           hint={
             <Text style={[styles.hint, overLimit && styles.hintError]}>{hintText}</Text>
           }
           counter={
-            !tierReady ? null : isPremium ? (
-              <WordCounter count={words} min={PREMIUM_MIN_WORDS} max={PREMIUM_MAX_WORDS} />
-            ) : (
+            tierReady ? (
               <Text style={[styles.charCounter, { color: freeCounterColor }]}>
                 {chars} / {FREE_MAX_CHARS}
               </Text>
-            )
+            ) : null
           }
         />
       </View>
@@ -240,6 +281,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: colors.textSecondary,
+  },
+  nameLabel: {
+    marginTop: 28,
+    marginBottom: 10,
+    marginLeft: 2,
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+    lineHeight: 20,
+    color: colors.textPrimary,
+  },
+  nameCard: {
+    overflow: 'hidden',
+  },
+  nameInput: {
+    minHeight: 52,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    fontFamily: fonts.regular,
+    fontSize: 16,
+    lineHeight: 22,
+    color: colors.textPrimary,
   },
   field: {
     marginTop: 28,

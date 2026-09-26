@@ -169,13 +169,21 @@ export default function SettingsScreen() {
         </Card>
       ) : null}
 
-      <Text style={[styles.sectionLabel, account ? null : styles.sectionFirst]}>Your goal</Text>
+      <Text style={[styles.sectionLabel, account ? null : styles.sectionFirst]}>
+        {isPremium ? 'Your profile' : 'Your goal'}
+      </Text>
       <Card padding={0} radius={16}>
         <View style={styles.groupClip}>
           <SettingsRow
             icon="create-outline"
-            label="Edit your goal"
-            onPress={() => router.push({ pathname: '/goal', params: { mode: 'edit' } })}
+            label={isPremium ? 'Edit profile' : 'Edit your goal'}
+            onPress={() =>
+              router.push(
+                isPremium
+                  ? { pathname: '/premium-onboarding', params: { mode: 'edit' } }
+                  : { pathname: '/goal', params: { mode: 'edit' } },
+              )
+            }
             isLast={!needsResume}
           />
           {needsResume ? (

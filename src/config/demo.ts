@@ -22,8 +22,8 @@
  *   DEMO_ALWAYS_SHOW_ONBOARDING is on.
  *   Sign-in, Premium, usage, history, and goal persist across launches.
  */
-/** TEMPORARY for demo/recording. Set false to persist the session and skip onboarding. */
-export const DEMO_FORCE_FIRST_RUN = true;
+/** Product default: persist the session and skip onboarding when a goal exists. */
+export const DEMO_FORCE_FIRST_RUN = false;
 
-/** TEMPORARY for demo/recording. Set false to skip onboarding when a goal exists. */
-export const DEMO_ALWAYS_SHOW_ONBOARDING = true;
+/** Product default: skip onboarding when a goal is already saved. */
+export const DEMO_ALWAYS_SHOW_ONBOARDING = false;

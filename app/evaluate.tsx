@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -62,11 +61,6 @@ const EXAMPLES = [
   },
 ] as const;
 
-type PdfAttachment = {
-  uri: string;
-  name: string;
-};
-
 // Stack screen: evaluate an opportunity. Lives above the tabs so Home stays a dashboard.
 export default function EvaluateScreen() {
   const router = useRouter();
@@ -74,7 +68,6 @@ export default function EvaluateScreen() {
 
   const [text, setText] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [pdf, setPdf] = useState<PdfAttachment | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [isPremium, setIsPremium] = useState(false);
@@ -102,8 +95,7 @@ export default function EvaluateScreen() {
   );
 
   const trimmed = text.trim();
-  const canAnalyze =
-    (trimmed.length > 0 || imageUri !== null || pdf !== null) && !isAnalyzing;
+  const canAnalyze = (trimmed.length > 0 || imageUri !== null) && !isAnalyzing;
 
   const goHome = () => {
     if (router.canGoBack()) router.back();
@@ -113,7 +105,7 @@ export default function EvaluateScreen() {
   const handleAnalyze = async () => {
     if (analyzingRef.current || !canAnalyze) return;
 
-    if (trimmed && isUrlOnlySubmission(trimmed) && !imageUri && !pdf) {
+    if (trimmed && isUrlOnlySubmission(trimmed) && !imageUri) {
       showAlert('Paste the listing', URL_ONLY_MESSAGE);
       return;
     }
@@ -138,7 +130,7 @@ export default function EvaluateScreen() {
       const [goal, profile] = await Promise.all([getGoal(), getProfile()]);
       // Free: goal only. Premium: goal + profile fields (no resume bytes).
       const evaluation = await evaluateOpportunity(
-        { text: trimmed, imageUri, pdfUri: pdf?.uri ?? null },
+        { text: trimmed, imageUri },
         goal ?? '',
         premium ? profile : null,
       );
@@ -185,31 +177,9 @@ export default function EvaluateScreen() {
       });
       if (!result.canceled && result.assets[0]?.uri) {
         setImageUri(result.assets[0].uri);
-        // One attachment primary path: clear PDF so we do not mix resume/eval confusion.
-        setPdf(null);
       }
     } catch {
       showAlert('Could not open photos', 'Please try again.');
-    }
-  };
-
-  const handlePickPdf = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf'],
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-      if (result.canceled) return;
-      const asset = result.assets[0];
-      if (!asset?.uri) return;
-      setPdf({
-        uri: asset.uri,
-        name: asset.name?.trim() || 'Listing.pdf',
-      });
-      setImageUri(null);
-    } catch {
-      showAlert('Could not open PDF picker', 'Please try again, or paste the listing text.');
     }
   };
 
@@ -292,17 +262,6 @@ export default function EvaluateScreen() {
             <Text style={styles.pillLabel}>Screenshot</Text>
           </Pressable>
 
-          <Pressable
-            onPress={handlePickPdf}
-            disabled={isAnalyzing}
-            accessibilityRole="button"
-            accessibilityLabel="Upload listing PDF"
-            style={({ pressed }) => [styles.pill, styles.pillGap, pressed && styles.pressed]}
-          >
-            <Ionicons name="document-outline" size={18} color={colors.purple} />
-            <Text style={styles.pillLabel}>PDF</Text>
-          </Pressable>
-
           {imageUri ? (
             <View style={styles.thumbWrap}>
               <Image source={{ uri: imageUri }} style={styles.thumb} />
@@ -314,23 +273,6 @@ export default function EvaluateScreen() {
                 style={styles.removeBadge}
               >
                 <Ionicons name="close" size={12} color={colors.white} />
-              </Pressable>
-            </View>
-          ) : null}
-
-          {pdf ? (
-            <View style={styles.pdfChip}>
-              <Ionicons name="document-text-outline" size={16} color={colors.purple} />
-              <Text style={styles.pdfName} numberOfLines={1}>
-                {pdf.name}
-              </Text>
-              <Pressable
-                onPress={() => setPdf(null)}
-                hitSlop={14}
-                accessibilityRole="button"
-                accessibilityLabel="Remove PDF"
-              >
-                <Ionicons name="close" size={14} color={colors.textSecondary} />
               </Pressable>
             </View>
           ) : null}
@@ -398,7 +340,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  pillGap: {},
   pillLabel: {
     marginLeft: 8,
     fontFamily: fonts.medium,
@@ -429,24 +370,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.white,
-  },
-  pdfChip: {
-    maxWidth: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: colors.backgroundSoft,
-  },
-  pdfName: {
-    flexShrink: 1,
-    maxWidth: 140,
-    fontFamily: fonts.medium,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.textPrimary,
   },
   sectionHeading: {
     ...type.label,

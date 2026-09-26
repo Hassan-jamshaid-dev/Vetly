@@ -46,7 +46,7 @@ export async function evaluateOpportunity(
   const hasPdf = Boolean(pdfUri);
 
   if (!text.trim() && !hasScreenshot && !hasPdf) {
-    throw new Error('Paste an opportunity, upload a screenshot, or pick a PDF first.');
+    throw new Error('Paste an opportunity or upload a screenshot first.');
   }
   if (text.trim() && isUrlOnlySubmission(text) && !hasScreenshot && !hasPdf) {
     throw new Error(URL_ONLY_MESSAGE);

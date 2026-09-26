@@ -20,9 +20,7 @@ const BAR_WIDTH = 140;
 const BAR_HEIGHT = 4;
 
 // Screen 1: Splash. Shows the brand briefly, then fades to Onboarding or Home.
-// TEMPORARY: DEMO_ALWAYS_SHOW_ONBOARDING keeps Splash → Get Started even when a
-// goal is already saved (goals are not wiped). DEMO_FORCE_FIRST_RUN still resets
-// the whole demo session when on — leave it false unless you need a clean slate.
+// With DEMO flags off, a saved goal skips to Home; otherwise Get Started.
 export default function SplashScreen() {
   const router = useRouter();
   const pathname = usePathname();
@@ -80,8 +78,6 @@ export default function SplashScreen() {
         }).start(() => {
           if (cancelled) return;
           if (!isSplashRoute(pathnameRef.current)) return;
-          // TEMPORARY: DEMO_ALWAYS_SHOW_ONBOARDING forces Get Started. Revert by
-          // setting it false in src/config/demo.ts so a saved goal skips to Home.
           if (!DEMO_FORCE_FIRST_RUN && !DEMO_ALWAYS_SHOW_ONBOARDING && savedGoal) {
             router.replace('/(tabs)/home');
           } else {

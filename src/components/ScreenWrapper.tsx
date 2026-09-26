@@ -74,6 +74,7 @@ export function ScreenWrapper({
         contentContainerStyle,
       ]}
       contentInsetAdjustmentBehavior="automatic"
+      automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       keyboardShouldPersistTaps="always"
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       nestedScrollEnabled={false}

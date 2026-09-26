@@ -12,12 +12,12 @@ const STEPS = [
   {
     icon: 'create-outline' as const,
     title: 'Write your goal',
-    body: 'Who you are now and where you want to go. Free: 300–1000 characters. Vetly scores every opportunity against this.',
+    body: 'Who you are now and where you want to go. Free: 300–1000 characters. Premium: 500–5000 characters with grade, universities, and career. Vetly scores every opportunity against this.',
   },
   {
     icon: 'sparkles-outline' as const,
     title: 'Evaluate an opportunity',
-    body: 'Paste a listing, link, or screenshot. The more detail you add, the more useful the score.',
+    body: 'Paste a listing or upload a screenshot. The more detail you add, the more useful the score.',
   },
   {
     icon: 'analytics-outline' as const,

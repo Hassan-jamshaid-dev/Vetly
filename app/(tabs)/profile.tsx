@@ -9,6 +9,7 @@ import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { SoftSkeleton } from '@/components/SoftSkeleton';
 import { getAccount, getIsSignedIn, type Account } from '@/storage/authStorage';
 import { getGoal } from '@/storage/goalStorage';
+import { getDisplayName } from '@/storage/nameStorage';
 import { getIsPremium } from '@/storage/premiumStorage';
 import {
   getProfile,
@@ -40,6 +41,7 @@ function displayGoal(raw: string | null): string | null {
 export default function ProfileScreen() {
   const router = useRouter();
   const [account, setAccount] = useState<Account | null>(null);
+  const [localName, setLocalName] = useState<string | null>(null);
   const [profile, setProfileState] = useState<StudentProfile | null>(null);
   const [goal, setGoalState] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
@@ -49,15 +51,18 @@ export default function ProfileScreen() {
     useCallback(() => {
       let cancelled = false;
       (async () => {
-        const [signedIn, savedAccount, savedProfile, savedGoal, premium] = await Promise.all([
-          getIsSignedIn(),
-          getAccount(),
-          getProfile(),
-          getGoal(),
-          getIsPremium(),
-        ]);
+        const [signedIn, savedAccount, savedName, savedProfile, savedGoal, premium] =
+          await Promise.all([
+            getIsSignedIn(),
+            getAccount(),
+            getDisplayName(),
+            getProfile(),
+            getGoal(),
+            getIsPremium(),
+          ]);
         if (cancelled) return;
         setAccount(signedIn ? savedAccount : null);
+        setLocalName(savedName);
         setProfileState(savedProfile);
         setGoalState(savedGoal);
         setIsPremium(premium);
@@ -69,7 +74,15 @@ export default function ProfileScreen() {
     }, []),
   );
 
-  const showFull = Boolean(account) || hasProfileContent(profile);
+  const showFull = Boolean(account) || hasProfileContent(profile) || Boolean(localName);
+
+  const pushEdit = () => {
+    router.push(
+      isPremium
+        ? { pathname: '/premium-onboarding', params: { mode: 'edit' } }
+        : { pathname: '/goal', params: { mode: 'edit' } },
+    );
+  };
 
   return (
     <ScreenWrapper
@@ -99,22 +112,18 @@ export default function ProfileScreen() {
       ) : showFull ? (
         <FullProfile
           account={account}
+          localName={localName}
           profile={profile}
           goal={goal}
           isPremium={isPremium}
-          onEdit={() =>
-            router.push(
-              isPremium
-                ? { pathname: '/premium-onboarding', params: { mode: 'edit' } }
-                : { pathname: '/goal', params: { mode: 'edit' } },
-            )
-          }
+          onEdit={pushEdit}
           onResume={() => router.push({ pathname: '/resume', params: { mode: 'edit' } })}
         />
       ) : (
         <GuestProfile
           goal={goal}
-          onEditGoal={() => router.push({ pathname: '/goal', params: { mode: 'edit' } })}
+          isPremium={isPremium}
+          onEditGoal={pushEdit}
           onLogin={() => router.push('/signup')}
         />
       )}
@@ -124,6 +133,7 @@ export default function ProfileScreen() {
 
 function FullProfile({
   account,
+  localName,
   profile,
   goal,
   isPremium,
@@ -131,13 +141,15 @@ function FullProfile({
   onResume,
 }: {
   account: Account | null;
+  localName: string | null;
   profile: StudentProfile | null;
   goal: string | null;
   isPremium: boolean;
   onEdit: () => void;
   onResume: () => void;
 }) {
-  const displayName = account?.name?.trim() || 'Your profile';
+  const displayName =
+    account?.name?.trim() || localName?.trim() || 'Your profile';
   const initial = displayName.charAt(0).toUpperCase();
   const subtitle = profile?.gradeLevel.trim() || 'Student';
   const chips = [
@@ -251,10 +263,12 @@ function FullProfile({
 
 function GuestProfile({
   goal,
+  isPremium,
   onEditGoal,
   onLogin,
 }: {
   goal: string | null;
+  isPremium: boolean;
   onEditGoal: () => void;
   onLogin: () => void;
 }) {
@@ -275,7 +289,10 @@ function GuestProfile({
         )}
       </Card>
       <View style={styles.guestActions}>
-        <GradientButton label="Edit your goal" onPress={onEditGoal} />
+        <GradientButton
+          label={isPremium ? 'Edit profile' : 'Edit your goal'}
+          onPress={onEditGoal}
+        />
         <Pressable
           onPress={onLogin}
           accessibilityRole="button"

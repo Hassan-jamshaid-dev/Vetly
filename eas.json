@@ -13,8 +13,7 @@
       "distribution": "internal",
       "environment": "preview",
       "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleDebug"
+        "buildType": "apk"
       },
       "env": {
         "EAS_BUILD_PROFILE": "preview"

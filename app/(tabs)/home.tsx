@@ -23,6 +23,7 @@ import { fetchRemoteEvaluations } from '@/services/evaluationCloud';
 import { colorForScore } from '@/services/score';
 import { firstNameOf, getAccount, getIsSignedIn } from '@/storage/authStorage';
 import { getHistory, mergeRemoteHistory } from '@/storage/historyStorage';
+import { getDisplayName } from '@/storage/nameStorage';
 import { getIsPremium } from '@/storage/premiumStorage';
 import { setCurrentEvaluation } from '@/store/evaluationStore';
 import { colors } from '@/theme/colors';
@@ -56,16 +57,18 @@ export default function HomeScreen() {
     useCallback(() => {
       let cancelled = false;
       (async () => {
-        const [premium, signedIn, account, history] = await Promise.all([
+        const [premium, signedIn, account, localName, history] = await Promise.all([
           getIsPremium(),
           getIsSignedIn(),
           getAccount(),
+          getDisplayName(),
           getHistory(),
         ]);
         if (cancelled) return;
         setIsPremium(premium);
-        const name = signedIn && account ? firstNameOf(account.name).trim() : '';
-        setFirstName(name || null);
+        const fromAccount = signedIn && account ? firstNameOf(account.name).trim() : '';
+        const fromLocal = localName ? firstNameOf(localName).trim() : '';
+        setFirstName(fromAccount || fromLocal || null);
         setHydrated(true);
         if (!premium) {
           setRecent([]);
