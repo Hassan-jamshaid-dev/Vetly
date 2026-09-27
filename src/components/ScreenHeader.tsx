@@ -1,0 +1,87 @@
+import { Ionicons } from '@expo/vector-icons';
+import type { ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { colors } from '@/theme/colors';
+import { spacing } from '@/theme/spacing';
+import { type } from '@/theme/typography';
+
+type ScreenHeaderProps = {
+  /** Called when the back arrow is pressed. Omit to hide the arrow (side slot stays). */
+  onBack?: () => void;
+  /** Optional title, centred between the side slots. */
+  title?: string;
+  /** Optional right-side control (e.g. VMark). Width matches the back slot. */
+  right?: ReactNode;
+};
+
+const HEADER_HEIGHT = 52;
+const SIDE = 44;
+
+/**
+ * Header row with a back slot, a centred single-line title, and a matching
+ * right slot so the logo never collides with the chevron.
+ * Safe-area inset belongs on ScreenWrapper, not here — avoids a second nav.
+ */
+export function ScreenHeader({ onBack, title, right }: ScreenHeaderProps) {
+  return (
+    <View style={styles.row}>
+      <View style={styles.side}>
+        {onBack ? (
+          <Pressable
+            onPress={onBack}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+          >
+            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+        {title ?? ''}
+      </Text>
+
+      <View style={styles.side}>{right}</View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: {
+    minHeight: HEADER_HEIGHT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    gap: spacing.sm,
+  },
+  side: {
+    width: SIDE,
+    minWidth: SIDE,
+    maxWidth: SIDE,
+    height: HEADER_HEIGHT,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  back: {
+    width: SIDE,
+    height: HEADER_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.88,
+  },
+  title: {
+    ...type.button,
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: spacing.xs,
+    textAlign: 'center',
+    color: colors.textPrimary,
+  },
+});
