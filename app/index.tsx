@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { usePathname, useRouter } from 'expo-router';
+import { useNavigation, usePathname } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,7 +22,7 @@ const BAR_HEIGHT = 4;
 // Screen 1: Splash. Shows the brand briefly, then fades to Onboarding or Home.
 // With DEMO flags off, a saved goal skips to Home; otherwise Get Started.
 export default function SplashScreen() {
-  const router = useRouter();
+  const navigation = useNavigation();
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;
@@ -81,23 +81,35 @@ export default function SplashScreen() {
         }).start(() => {
           if (cancelled) return;
           if (!isSplashRoute(pathnameRef.current)) return;
+          // Reset the root stack so a restored mid-onboarding route (including
+          // /premium-onboarding) cannot stick across reopen. Never open Premium
+          // setup from Splash — only Get Started → free goal, or Home.
           if (!DEMO_FORCE_FIRST_RUN && !DEMO_ALWAYS_SHOW_ONBOARDING && savedGoal) {
-            router.replace('/(tabs)/home');
+            navigation.reset({
+              index: 0,
+              routes: [{ name: '(tabs)', params: { screen: 'home' } }],
+            } as never);
           } else {
-            router.replace('/onboarding');
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'onboarding' }],
+            } as never);
           }
         });
       })
       .catch(() => {
         if (cancelled || !isSplashRoute(pathnameRef.current)) return;
-        router.replace('/onboarding');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'onboarding' }],
+        } as never);
       });
 
     return () => {
       cancelled = true;
       if (splashTimer) clearTimeout(splashTimer);
     };
-  }, [brandOpacity, progress, router, screenOpacity]);
+  }, [brandOpacity, navigation, progress, screenOpacity]);
 
   return (
     <Animated.View style={[styles.screen, { opacity: screenOpacity }]}>

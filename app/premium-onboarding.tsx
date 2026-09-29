@@ -24,6 +24,7 @@ import { useScrollFocusedInput } from '@/hooks/useScrollFocusedInput';
 import { firstQueryParam } from '@/navigation/queryParam';
 import { setGoal } from '@/storage/goalStorage';
 import { getDisplayName, setDisplayName } from '@/storage/nameStorage';
+import { getIsPremium } from '@/storage/premiumStorage';
 import {
   getProfile,
   profileToGoalText,
@@ -142,6 +143,7 @@ export default function PremiumOnboardingScreen() {
   const [currentStanding, setCurrentStanding] = useState('');
   const [futureAmbitions, setFutureAmbitions] = useState('');
   const [saving, setSaving] = useState(false);
+  const [allowed, setAllowed] = useState(false);
   const savingRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
   const standingRef = useRef<TextInput>(null);
@@ -149,8 +151,26 @@ export default function PremiumOnboardingScreen() {
   const { onScroll, onInputFocus, ensureVisible, keyboardPad } =
     useScrollFocusedInput(scrollRef);
 
+  // Non-premium users must never stay here — including Android restoring a
+  // stale stack after they quit mid free onboarding. Send them to Get Started.
+  useEffect(() => {
+    let cancelled = false;
+    getIsPremium().then((premium) => {
+      if (cancelled) return;
+      if (!premium) {
+        router.replace('/onboarding');
+        return;
+      }
+      setAllowed(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   // Coming back from Resume should not wipe what they already typed.
   useEffect(() => {
+    if (!allowed) return;
     let cancelled = false;
     Promise.all([getProfile(), getDisplayName()]).then(([saved, savedName]) => {
       if (cancelled) return;
@@ -166,7 +186,7 @@ export default function PremiumOnboardingScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [allowed]);
 
   const standing = narrativeState(currentStanding);
   const ambitions = narrativeState(futureAmbitions);
@@ -241,6 +261,10 @@ export default function PremiumOnboardingScreen() {
     if (router.canGoBack()) router.back();
     else router.replace('/(tabs)/home');
   };
+
+  if (!allowed) {
+    return <View style={{ flex: 1, backgroundColor: colors.backgroundSoft }} />;
+  }
 
   return (
     <>

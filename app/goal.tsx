@@ -34,7 +34,8 @@ const PLACEHOLDER_TEXT =
   'Example: I am a Grade 11 student aiming for top universities like Waterloo and MIT. I want to study Computer Engineering and eventually found a tech startup. Right now I am building my profile through extracurriculars and self-learning programming and AI. I care more about shipping projects I can show than collecting certificates, and I want to know which opportunities actually move that story forward.';
 
 // Screen 3: Goal. Free onboarding + "Edit your goal" (Profile / Settings).
-// Free: 300–2000 characters. Premium users are redirected to premium-onboarding.
+// Free first-run: always this form (300–2000). Premium edit redirects to
+// premium-onboarding; post-upgrade setup is opened from the paywall, not here.
 export default function GoalScreen() {
   const router = useRouter();
   const resetToHome = useResetToHome();
@@ -53,13 +54,16 @@ export default function GoalScreen() {
   const { onScroll, onInputFocus, ensureVisible, keyboardPad } =
     useScrollFocusedInput(scrollRef);
 
-  // Premium users edit the structured profile, not this free goal screen.
+  // Free first-run (Get Started → /goal) always stays on this screen — never
+  // bounce to /premium-onboarding. That route is only for post-upgrade setup
+  // (paywall) or Premium "Edit profile" (mode=edit). A stale isPremium flag or
+  // a restored stack must not hijack incomplete free onboarding.
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       getIsPremium().then((premium) => {
         if (cancelled) return;
-        if (premium) {
+        if (isEdit && premium) {
           router.replace({ pathname: '/premium-onboarding', params: { mode: 'edit' } });
           return;
         }
@@ -68,7 +72,7 @@ export default function GoalScreen() {
       return () => {
         cancelled = true;
       };
-    }, [router]),
+    }, [router, isEdit]),
   );
 
   // Prefill name + goal once we know this is the free path.
