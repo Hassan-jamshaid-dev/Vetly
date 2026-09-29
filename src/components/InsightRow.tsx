@@ -29,7 +29,7 @@ export function InsightRow({ insight, isLast = false }: InsightRowProps) {
     <View style={[styles.row, !isLast && styles.separator]}>
       <View style={[styles.dot, { backgroundColor: dotColor }]} />
       <View style={styles.copy}>
-        <Text style={styles.title}>{SENTIMENT_TITLE[insight.sentiment]}</Text>
+        <Text style={styles.title}>{SENTIMENT_TITLE[insight.sentiment] ?? SENTIMENT_TITLE.neutral}</Text>
         <Text style={styles.body} selectable>
           {insight.text}
         </Text>

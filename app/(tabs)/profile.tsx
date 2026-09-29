@@ -245,7 +245,7 @@ function FullProfile({
         <Card radius={16} style={styles.block}>
           <Text style={styles.cardLabel}>Resume</Text>
           <Text style={styles.goalText}>
-            You skipped this during setup. Add a PDF or image anytime.
+            You skipped this during setup. Add a resume image anytime.
           </Text>
           <Pressable
             onPress={onResume}

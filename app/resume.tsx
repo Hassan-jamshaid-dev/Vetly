@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -22,6 +21,7 @@ type PickedFile = {
 
 // Screen C: store a local URI + file name only. We never read the bytes,
 // never parse the resume, and never write the file into the repo.
+// Image only — there is no PDF text extraction for resumes.
 export default function ResumeScreen() {
   const router = useRouter();
   const finishPremiumSetup = useFinishPremiumSetup();
@@ -56,39 +56,25 @@ export default function ResumeScreen() {
 
   const handlePick = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'image/*'],
-        copyToCacheDirectory: true,
-        multiple: false,
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        showAlert(
+          'Photo access needed',
+          'To upload an image of your resume, allow Vetly to access your photos. You can also skip for now.',
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
       });
-      if (result.canceled) return;
-      const asset = result.assets[0];
-      if (asset?.uri) {
-        setFile({ uri: asset.uri, name: asset.name || 'Resume' });
+      if (!result.canceled && result.assets[0]?.uri) {
+        const uri = result.assets[0].uri;
+        const name = uri.split('/').pop() ?? 'Resume image';
+        setFile({ uri, name });
       }
     } catch {
-      // Expo Go can refuse PDFs. Fall back to the photo library so the demo continues.
-      try {
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permission.granted) {
-          showAlert(
-            'Photo access needed',
-            'To upload an image of your resume, allow Vetly to access your photos. You can also skip for now.',
-          );
-          return;
-        }
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          quality: 0.8,
-        });
-        if (!result.canceled && result.assets[0]?.uri) {
-          const uri = result.assets[0].uri;
-          const name = uri.split('/').pop() ?? 'Resume image';
-          setFile({ uri, name });
-        }
-      } catch {
-        showAlert('Could not open a picker', 'Skip for now and continue to Home.');
-      }
+      showAlert('Could not open photos', 'Skip for now and continue to Home.');
     }
   };
 
@@ -154,12 +140,12 @@ export default function ResumeScreen() {
 
       <Card style={styles.card}>
         <View style={styles.iconWrap}>
-          <Ionicons name="document-text-outline" size={28} color={colors.purple} />
+          <Ionicons name="image-outline" size={28} color={colors.purple} />
         </View>
-        <Text style={styles.cardTitle}>PDF or image</Text>
+        <Text style={styles.cardTitle}>Resume image</Text>
         <Text style={styles.cardBody}>
-          In Expo Go, PDFs may not appear. Pick an image of your resume, or skip — a full PDF
-          picker lands on a development build later.
+          Pick a photo or screenshot of your resume. We do not read or parse the file — only the
+          name and a local link stay on this device.
         </Text>
 
         {file ? (
@@ -187,7 +173,7 @@ export default function ResumeScreen() {
             style={({ pressed }) => [styles.pickBtn, pressed && styles.pressed]}
           >
             <Ionicons name="cloud-upload-outline" size={18} color={colors.purple} />
-            <Text style={styles.pickLabel}>Choose file</Text>
+            <Text style={styles.pickLabel}>Choose image</Text>
           </Pressable>
         )}
       </Card>

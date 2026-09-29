@@ -165,12 +165,12 @@ Live evaluations call a **server** route (`POST /api/evaluate`) that scores with
 
 | | Free | Premium |
 |---|---|---|
-| Opportunity text (+ screenshot flag) | Yes | Yes |
+| Opportunity text (+ screenshot image when attached) | Yes | Yes |
 | Saved goal | Yes | Yes |
 | Grade, universities, career, activities, situation | No | Yes (when the structured profile exists) |
 | Resume file bytes / local URI | Never | Never |
 
-Screenshot image bytes stay on device; only a `hasScreenshot` flag is sent with the pasted text. The server does **not** fetch URLs and does **not** score PDFs. Netlify’s static web preview (https://vetly-f99d6523.netlify.app) **does not score or purchase** — use the **Android APK** + https://vetly.expo.app for live Evaluate and Test Store IAP.
+Screenshot image bytes are sent to the scoring API for vision when attached (alongside pasted text and goal). Resume file bytes stay on device and are never sent. The server does **not** fetch URLs and does **not** score PDFs. Netlify’s static web preview (https://vetly-f99d6523.netlify.app) **does not score or purchase** — use the **Android APK** + https://vetly.expo.app for live Evaluate and Test Store IAP.
 
 ---
 
@@ -264,7 +264,7 @@ Paste opportunity text (max 2000 characters) and/or **Upload Screenshot** (`expo
 
 - Free with 0 remaining today → paywall (the evaluation is not run).
 - Otherwise the client POSTs to `/api/evaluate` (absolute URL on native via `EXPO_PUBLIC_API_URL`, e.g. https://vetly.expo.app):
-  - **Free:** opportunity text + goal (+ screenshot flag). No premium profile fields.
+  - **Free:** opportunity text + goal (+ screenshot image bytes when attached). No premium profile fields.
   - **Premium:** same, plus grade, universities, career, activities, situation when the structured profile exists.
   - Resume **file bytes** and local URI are **never** sent. URL contents are **never** fetched.
   - Server scores with OpenAI **gpt-5.5**; key stays on the host.
@@ -316,7 +316,7 @@ After a real unlock (or the labeled `__DEV__` demo unlock), if the structured pr
 
 After Upgrade, a structured profile: grade level, optional target universities, dream career, current activities, situation (≥20 characters). Continue writes `src/storage/profileStorage.ts`. If Analyze still has no goal text, the profile is turned into a goal string.
 
-Then **Resume**: optional PDF or image. Only a **local URI + file name** are stored. Bytes are never uploaded, never parsed, never committed. Skip is allowed; Profile / Settings can add a file later. First-time setup then lands on Home, or Results if an evaluation is still in memory (so Unlock from Results still shows the guidance they paid for).
+Then **Resume**: optional **image** only (photo / screenshot of a resume). Only a **local URI + file name** are stored. Bytes are never uploaded, never parsed, never committed. PDF is not offered — Vetly does not extract resume PDF text. Skip is allowed; Profile / Settings can add a file later. First-time setup then lands on Home, or Results if an evaluation is still in memory (so Unlock from Results still shows the guidance they paid for).
 
 `/premium-onboarding?mode=edit` and `/resume?mode=edit` return to Profile instead of continuing the first-run chain.
 
@@ -413,9 +413,9 @@ Local History (`vetly:history`) is **Premium-only**. Free Analyze still may upse
 
 **Context sent to the model**
 
-- **Free:** opportunity text + goal (+ `hasScreenshot` flag). Resume bytes are never sent.
+- **Free:** opportunity text + goal (+ screenshot image bytes when attached for vision). Resume bytes are never sent.
 - **Premium:** also grade, universities, dream career, activities, situation when the structured profile exists.
-- History is **not** in this call (History-tab `coherence.ts` only). Screenshot **image bytes** stay on device.
+- History is **not** in this call (History-tab `coherence.ts` only). Screenshot image bytes are sent for vision when attached; resume bytes stay on device.
 
 `src/services/score.ts` maps the integer to label and color. `src/types/evaluation.ts` is the UI contract.
 

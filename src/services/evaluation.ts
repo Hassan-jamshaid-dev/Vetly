@@ -42,14 +42,12 @@ export async function evaluateOpportunity(
 ): Promise<Evaluation> {
   const text = typeof input?.text === 'string' ? input.text : '';
   const imageUri = typeof input?.imageUri === 'string' ? input.imageUri : null;
-  const pdfUri = typeof input?.pdfUri === 'string' ? input.pdfUri : null;
   const hasScreenshot = Boolean(imageUri);
-  const hasPdf = Boolean(pdfUri);
 
-  if (!text.trim() && !hasScreenshot && !hasPdf) {
+  if (!text.trim() && !hasScreenshot) {
     throw new Error('Paste an opportunity or upload a screenshot first.');
   }
-  if (text.trim() && isUrlOnlySubmission(text) && !hasScreenshot && !hasPdf) {
+  if (text.trim() && isUrlOnlySubmission(text) && !hasScreenshot) {
     throw new Error(URL_ONLY_MESSAGE);
   }
   if (!goal.trim()) {
@@ -70,18 +68,6 @@ export async function evaluateOpportunity(
     }
   }
 
-  let pdfBase64: string | null = null;
-  if (pdfUri) {
-    try {
-      pdfBase64 = await readLocalBase64(pdfUri);
-    } catch {
-      throw new Error('Could not read the PDF. Try another file.');
-    }
-    if (!pdfBase64 || pdfBase64.length > MAX_BASE64_CHARS) {
-      throw new Error('That PDF is too large. Try a smaller file or paste the text.');
-    }
-  }
-
   const body: EvaluateRequestBody = {
     opportunityText: text.trim(),
     goal: goal.trim(),
@@ -89,7 +75,6 @@ export async function evaluateOpportunity(
     hasScreenshot,
     screenshotBase64,
     screenshotMimeType,
-    pdfBase64,
     profile: profile ? toProfilePayload(profile) : null,
   };
 
@@ -153,22 +138,53 @@ type Draft = Omit<Evaluation, 'id' | 'label' | 'createdAt'>;
 function finish(draft: Draft): Evaluation {
   const score = clampScore(draft.score);
   const hasApplication = draft.hasApplication === true;
+  const insights = sanitizeInsights(draft.insights);
+  if (insights.length === 0) {
+    throw new Error('Scoring returned an unexpected response.');
+  }
   return {
     title: typeof draft.title === 'string' ? draft.title : 'Untitled opportunity',
     source: typeof draft.source === 'string' ? draft.source : 'Pasted text',
     score,
     hasApplication,
-    formHelp: hasApplication && Array.isArray(draft.formHelp) ? draft.formHelp : [],
-    insights: Array.isArray(draft.insights) ? draft.insights : [],
-    fills: Array.isArray(draft.fills) ? draft.fills : [],
-    doesNotFill: Array.isArray(draft.doesNotFill) ? draft.doesNotFill : [],
-    helps: Array.isArray(draft.helps) ? draft.helps : [],
-    hurts: Array.isArray(draft.hurts) ? draft.hurts : [],
+    formHelp: hasApplication ? stringList(draft.formHelp) : [],
+    insights,
+    fills: stringList(draft.fills),
+    doesNotFill: stringList(draft.doesNotFill),
+    helps: stringList(draft.helps),
+    hurts: stringList(draft.hurts),
     guidance: typeof draft.guidance === 'string' ? draft.guidance : '',
     label: labelForScore(score),
     id: makeId(),
     createdAt: new Date().toISOString(),
   };
+}
+
+function sanitizeInsights(value: unknown): Evaluation['insights'] {
+  if (!Array.isArray(value)) return [];
+  const out: Evaluation['insights'] = [];
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const text = typeof row.text === 'string' ? row.text.trim() : '';
+    if (!text) continue;
+    const sentiment =
+      row.sentiment === 'positive' || row.sentiment === 'negative' || row.sentiment === 'neutral'
+        ? row.sentiment
+        : 'neutral';
+    out.push({ text: text.slice(0, 600), sentiment });
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .slice(0, 8);
 }
 
 function makeId(): string {
