@@ -44,8 +44,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # ubuntu-latest already ships ANDROID_HOME. Avoid android-actions/setup-android
+      # default packages (includes obsolete `tools`, which fails sdkmanager).
+      - name: Prepare Android SDK
+        run: |
+          set -euo pipefail
+          echo "ANDROID_HOME=${ANDROID_HOME:-}"
+          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-}"
+          test -n "${ANDROID_HOME:-}"
+          # Accept licenses non-interactively; gradle will pull platforms/build-tools as needed
+          mkdir -p "$ANDROID_HOME/licenses"
+          echo -e "24333f8a63b6825ea9c5514f83c2829b004d1fee\n" > "$ANDROID_HOME/licenses/android-sdk-license"
+          echo -e "84831b9409646a918e30573bab4c9c91346d8abd\n" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+          sdkmanager --list_installed || true
 
       - name: Install npm dependencies
         run: npm ci
