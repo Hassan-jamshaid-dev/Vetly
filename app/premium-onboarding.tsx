@@ -47,8 +47,9 @@ const GRADE_LEVELS = [
   'Other',
 ] as const;
 
-const FIELD_MAX = 2000;
-/** Premium narrative fields: each is 1000–5000 characters. */
+/** Current Activities: up to 5000 characters (no separate standing essay). */
+const ACTIVITIES_MAX = 5000;
+/** Future Ambitions: 1000–5000 characters. */
 const NARRATIVE_MIN = 1000;
 const NARRATIVE_MAX = 5000;
 const CAREER_MAX = 80;
@@ -140,13 +141,11 @@ export default function PremiumOnboardingScreen() {
   const [uniDraft, setUniDraft] = useState('');
   const [dreamCareer, setDreamCareer] = useState('');
   const [activities, setActivities] = useState('');
-  const [currentStanding, setCurrentStanding] = useState('');
   const [futureAmbitions, setFutureAmbitions] = useState('');
   const [saving, setSaving] = useState(false);
   const [allowed, setAllowed] = useState(false);
   const savingRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
-  const standingRef = useRef<TextInput>(null);
   const ambitionsRef = useRef<TextInput>(null);
   const { onScroll, onInputFocus, ensureVisible, keyboardPad } =
     useScrollFocusedInput(scrollRef);
@@ -179,8 +178,7 @@ export default function PremiumOnboardingScreen() {
       setGradeLevel(saved.gradeLevel);
       setUniversities(mergeUniversityNames([], saved.universities.join(',')));
       setDreamCareer(saved.dreamCareer.slice(0, CAREER_MAX));
-      setActivities(saved.activities.slice(0, FIELD_MAX));
-      setCurrentStanding(saved.currentStanding.slice(0, NARRATIVE_MAX));
+      setActivities(saved.activities.slice(0, ACTIVITIES_MAX));
       setFutureAmbitions(saved.futureAmbitions.slice(0, NARRATIVE_MAX));
     });
     return () => {
@@ -188,7 +186,6 @@ export default function PremiumOnboardingScreen() {
     };
   }, [allowed]);
 
-  const standing = narrativeState(currentStanding);
   const ambitions = narrativeState(futureAmbitions);
   const activitiesLen = activities.length;
   const canContinue =
@@ -196,7 +193,7 @@ export default function PremiumOnboardingScreen() {
     gradeLevel.length > 0 &&
     dreamCareer.trim().length > 0 &&
     activities.trim().length > 0 &&
-    standing.ok &&
+    activities.trim().length <= ACTIVITIES_MAX &&
     ambitions.ok &&
     !saving;
 
@@ -231,8 +228,8 @@ export default function PremiumOnboardingScreen() {
         gradeLevel,
         universities: nextUniversities,
         dreamCareer: dreamCareer.trim().slice(0, CAREER_MAX),
-        activities: activities.trim(),
-        currentStanding: currentStanding.trim(),
+        activities: activities.trim().slice(0, ACTIVITIES_MAX),
+        currentStanding: '',
         futureAmbitions: futureAmbitions.trim(),
         situation: '',
         resumeUri: existing?.resumeUri ?? null,
@@ -240,7 +237,7 @@ export default function PremiumOnboardingScreen() {
       };
       await setProfile(profile);
       await setDisplayName(displayName.trim());
-      // Keep Analyze goal in sync with both premium narrative fields.
+      // Keep Analyze goal in sync with activities + future ambitions.
       await setGoal(profileToGoalText(profile));
       // Editing from Profile should land back on the person page, not Resume.
       if (isEdit) {
@@ -294,8 +291,8 @@ export default function PremiumOnboardingScreen() {
         <Text style={styles.heading}>{isEdit ? 'Update your profile' : 'Tell us about you'}</Text>
         <Text style={styles.subheading}>
           {isEdit
-            ? 'Grade, career, current standing, and future ambitions used when Vetly evaluates opportunities for you.'
-            : 'Grade, career, current standing, and future ambitions — one step at a time. Premium uses this when it evaluates opportunities for you.'}
+            ? 'Grade, career, current activities, and future ambitions used when Vetly evaluates opportunities for you.'
+            : 'Grade, career, current activities, and future ambitions — one step at a time. Premium uses this when it evaluates opportunities for you.'}
         </Text>
 
         <FieldHeader
@@ -417,59 +414,17 @@ export default function PremiumOnboardingScreen() {
           icon="star-outline"
           label="Current Activities"
           infoTitle="Current Activities"
-          infoMessage="Clubs, internships, projects, sports, and other things you are doing now."
+          infoMessage="Clubs, internships, projects, sports, skills, and other things you are doing now — up to 5000 characters."
         />
         <MultilineField
           value={activities}
-          onChangeText={(value) => setActivities(value.slice(0, FIELD_MAX))}
-          maxLength={FIELD_MAX}
-          minHeight={88}
+          onChangeText={(value) => setActivities(value.slice(0, ACTIVITIES_MAX))}
+          maxLength={ACTIVITIES_MAX}
+          minHeight={120}
           placeholder="Clubs, internships, projects, sports…"
           accessibilityLabel="Current activities"
           onFocus={(event) => onInputFocus(event.target as unknown as TextInput)}
-          counter={`${activitiesLen}/${FIELD_MAX}`}
-        />
-
-        <FieldHeader
-          icon="locate-outline"
-          label="Current Standing"
-          infoTitle="Current Standing"
-          infoMessage="Where you are right now — skills, progress, constraints, and what your profile already shows. 1000–5000 characters."
-        />
-        <Text style={styles.limitCaption}>
-          {NARRATIVE_MIN}–{NARRATIVE_MAX} characters
-        </Text>
-        <MultilineField
-          ref={standingRef}
-          value={currentStanding}
-          onChangeText={(value) => setCurrentStanding(value.slice(0, NARRATIVE_MAX))}
-          maxLength={NARRATIVE_MAX}
-          minHeight={140}
-          placeholder="Where you are now: skills, projects, gaps, time constraints, and what is already on your record."
-          accessibilityLabel="Current standing"
-          onFocus={() => onInputFocus(standingRef.current)}
-          onContentSizeChange={() => ensureVisible(standingRef.current)}
-          hint={
-            standing.over
-              ? `Please trim to ${NARRATIVE_MAX} characters.`
-              : standing.len > 0 && standing.under
-                ? `At least ${NARRATIVE_MIN} characters.`
-                : undefined
-          }
-          counter={
-            <Text
-              style={[
-                styles.counter,
-                standing.over
-                  ? styles.counterError
-                  : standing.ok
-                    ? styles.counterOk
-                    : styles.counterMuted,
-              ]}
-            >
-              {standing.len}/{NARRATIVE_MAX}
-            </Text>
-          }
+          counter={`${activitiesLen}/${ACTIVITIES_MAX}`}
         />
 
         <FieldHeader

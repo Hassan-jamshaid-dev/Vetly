@@ -12,7 +12,7 @@ const STEPS = [
   {
     icon: 'create-outline' as const,
     title: 'Write your goal',
-    body: 'Who you are now and where you want to go. Free: 300–2000 characters. Premium: current standing and future ambitions (1000–5000 each) with grade, universities, and career. Vetly scores every opportunity against this.',
+    body: 'Who you are now and where you want to go. Free: 300–2000 characters. Premium: current activities (up to 5000) and future ambitions (1000–5000) with grade, universities, and career. Vetly scores every opportunity against this.',
   },
   {
     icon: 'sparkles-outline' as const,

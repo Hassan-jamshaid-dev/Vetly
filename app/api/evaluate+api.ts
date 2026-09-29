@@ -29,7 +29,7 @@ Your job is to determine whether pursuing a specific opportunity is a rational u
 
 Student data rules (Vetly product reality):
 - Free users only have a name and a goal (goal is 300-2000 characters).
-- Premium users also may have grade, universities, career, activities, currentStanding (1000-5000), and futureAmbitions (1000-5000). Older payloads may send a combined "situation" field instead.
+- Premium users also may have grade, universities, career, activities (up to 5000), and futureAmbitions (1000-5000). Older payloads may send a combined "situation" field instead. Do not expect a separate currentStanding field.
 - Only use fields that were actually provided in this request. Do not invent a portfolio, deadlines, skills, extracurriculars, academic stage, target universities, or career details the payload does not contain.
 - If a field is missing, do not assume a default profile. Score from what is present and state uncertainty when missing details matter.
 
@@ -388,7 +388,7 @@ Never invent:
 - Organizer reputation
 - Expected outcomes
 - Time commitment
-- Portfolio items, skills, grades, universities, activities, current standing, or future ambitions that were not provided
+- Portfolio items, skills, grades, universities, activities, or future ambitions that were not provided
 
 If important information is missing, explicitly account for that uncertainty.
 
@@ -463,7 +463,7 @@ Keep the response short enough for a phone Results screen. Do not dump walls of 
 - Score 5-10: keep "helps", "fills", and "hurts" short too — roughly 2-3 helps and 2-3 hurts. No filler.
 - "guidance": one practical paragraph for what to do next. Not a second essay.
 - "hasApplication" / "formHelp" only when the supplied pasted text or screenshot actually contains form questions (not merely an apply CTA).
-- Premium profile context may include separate "Current standing" and "Future ambitions" fields (plus legacy "Situation" on older payloads). Use both when present; do not collapse them into one invented field.
+- Premium profile context may include "Current activities" (up to 5000 characters) and "Future ambitions" (plus legacy "Situation" on older payloads). Use activities as where the student is now; do not expect a separate currentStanding essay.
 
 OUTPUT
 
@@ -530,7 +530,7 @@ true ONLY when BOTH are true:
 Set hasApplication to false when the user only described an opportunity in prose (no form questions), even if it is an opportunity they could apply to later. Do NOT show form-filling help for prose-only opportunity descriptions.
 
 "formHelp":
-If hasApplication is true, provide ordered, practical form-filling steps based ONLY on the provided information and profile fields (including currentStanding / futureAmbitions when present).
+If hasApplication is true, provide ordered, practical form-filling steps based ONLY on the provided information and profile fields (including activities / futureAmbitions when present).
 If hasApplication is false, return [].
 
 FINAL BEHAVIOR RULE
@@ -683,20 +683,24 @@ function sanitizeProfile(raw: unknown): EvaluateProfilePayload | null {
   const universities = Array.isArray(p.universities)
     ? p.universities.filter((u): u is string => typeof u === 'string').slice(0, 12)
     : [];
-  const currentStanding =
+  const legacyStanding =
     typeof p.currentStanding === 'string' ? p.currentStanding.slice(0, 5000) : '';
   const futureAmbitions =
     typeof p.futureAmbitions === 'string' ? p.futureAmbitions.slice(0, 5000) : '';
   const legacySituation = typeof p.situation === 'string' ? p.situation.slice(0, 10000) : '';
+  let activities = typeof p.activities === 'string' ? p.activities.slice(0, 5000) : '';
+  // Older clients sent currentStanding separately; fold only when activities is empty.
+  if (!activities.trim() && legacyStanding.trim()) {
+    activities = legacyStanding;
+  }
   const situation =
-    [currentStanding.trim(), futureAmbitions.trim()].filter(Boolean).join('\n\n') ||
+    [activities.trim(), futureAmbitions.trim()].filter(Boolean).join('\n\n') ||
     legacySituation;
   return {
     gradeLevel: typeof p.gradeLevel === 'string' ? p.gradeLevel.slice(0, 80) : '',
     universities,
     dreamCareer: typeof p.dreamCareer === 'string' ? p.dreamCareer.slice(0, 200) : '',
-    activities: typeof p.activities === 'string' ? p.activities.slice(0, 1500) : '',
-    currentStanding,
+    activities,
     futureAmbitions,
     situation,
   };
@@ -753,14 +757,13 @@ async function scoreWithOpenAI(options: {
         profile!.dreamCareer.trim()
           ? `- Dream career: ${profile!.dreamCareer.trim()}`
           : null,
-        profile!.activities.trim() ? `- Activities: ${profile!.activities.trim()}` : null,
-        profile!.currentStanding.trim()
-          ? `- Current standing: ${profile!.currentStanding.trim()}`
+        profile!.activities.trim()
+          ? `- Current activities: ${profile!.activities.trim()}`
           : null,
         profile!.futureAmbitions.trim()
           ? `- Future ambitions: ${profile!.futureAmbitions.trim()}`
           : null,
-        !profile!.currentStanding.trim() &&
+        !profile!.activities.trim() &&
         !profile!.futureAmbitions.trim() &&
         profile!.situation.trim()
           ? `- Situation: ${profile!.situation.trim()}`
@@ -768,7 +771,7 @@ async function scoreWithOpenAI(options: {
       ]
         .filter(Boolean)
         .join('\n') || 'Premium plan, but no optional profile fields were filled in.'
-    : 'Free plan: only name (if provided) and goal are available. Do not invent grade, universities, career, activities, current standing, future ambitions, portfolio, or deadlines.';
+    : 'Free plan: only name (if provided) and goal are available. Do not invent grade, universities, career, activities, future ambitions, portfolio, or deadlines.';
 
   const opportunityBlock =
     opportunityText.length > 0
@@ -866,10 +869,9 @@ function listIncludedFields(options: {
   if (options.profile.universities.length > 0) fields.push('universities');
   if (options.profile.dreamCareer.trim()) fields.push('career');
   if (options.profile.activities.trim()) fields.push('activities');
-  if (options.profile.currentStanding.trim()) fields.push('currentStanding');
   if (options.profile.futureAmbitions.trim()) fields.push('futureAmbitions');
   if (
-    !options.profile.currentStanding.trim() &&
+    !options.profile.activities.trim() &&
     !options.profile.futureAmbitions.trim() &&
     options.profile.situation.trim()
   ) {

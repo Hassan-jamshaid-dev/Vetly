@@ -4,19 +4,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Separate from the free-tier goal, and separate from the Premium flag.
 
 const PROFILE_KEY = 'vetly:profile';
+const ACTIVITIES_MAX = 5000;
+const AMBITIONS_MAX = 5000;
 
 export type StudentProfile = {
   gradeLevel: string;
   universities: string[];
   dreamCareer: string;
+  /** Clubs, projects, standing — up to 5000 characters. */
   activities: string;
-  /** Where the student is now (premium). */
+  /**
+   * Legacy field. No longer collected in the UI.
+   * On load, folded into activities when activities is empty.
+   */
   currentStanding: string;
   /** Where the student wants to go (premium). */
   futureAmbitions: string;
   /**
-   * Combined standing + ambitions for Analyze goal sync and older readers.
-   * Kept in sync on save from the two fields above.
+   * Combined activities + ambitions for Analyze goal sync and older readers.
+   * Kept in sync on save from the fields above.
    */
   situation: string;
   resumeUri: string | null;
@@ -39,11 +45,11 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
-function combineSituation(standing: string, ambitions: string): string {
-  return [standing.trim(), ambitions.trim()].filter(Boolean).join('\n\n');
+function combineSituation(activities: string, ambitions: string): string {
+  return [activities.trim(), ambitions.trim()].filter(Boolean).join('\n\n');
 }
 
-/** Normalize older profiles that only had `situation`. */
+/** Normalize older profiles that had currentStanding or only `situation`. */
 function normalizeProfile(raw: Record<string, unknown>): StudentProfile | null {
   if (
     typeof raw.gradeLevel !== 'string' ||
@@ -57,25 +63,38 @@ function normalizeProfile(raw: Record<string, unknown>): StudentProfile | null {
   }
 
   const legacySituation = typeof raw.situation === 'string' ? raw.situation : '';
-  let currentStanding =
+  const legacyStanding =
     typeof raw.currentStanding === 'string' ? raw.currentStanding : '';
   let futureAmbitions =
     typeof raw.futureAmbitions === 'string' ? raw.futureAmbitions : '';
+  let activities = raw.activities;
 
-  // Migrate: old single "situation" box → treat as current standing until they re-edit.
-  if (!currentStanding.trim() && !futureAmbitions.trim() && legacySituation.trim()) {
-    currentStanding = legacySituation;
+  // Fold old standing into activities only when activities is empty.
+  if (!activities.trim() && legacyStanding.trim()) {
+    activities = legacyStanding;
   }
 
+  // Migrate: old single "situation" box → activities when nothing else is set.
+  if (
+    !activities.trim() &&
+    !futureAmbitions.trim() &&
+    legacySituation.trim()
+  ) {
+    activities = legacySituation;
+  }
+
+  activities = activities.slice(0, ACTIVITIES_MAX);
+  futureAmbitions = futureAmbitions.slice(0, AMBITIONS_MAX);
+
   const situation =
-    combineSituation(currentStanding, futureAmbitions) || legacySituation;
+    combineSituation(activities, futureAmbitions) || legacySituation;
 
   return {
     gradeLevel: raw.gradeLevel,
     universities: raw.universities,
     dreamCareer: raw.dreamCareer,
-    activities: raw.activities,
-    currentStanding,
+    activities,
+    currentStanding: '',
     futureAmbitions,
     situation,
     resumeUri: (raw.resumeUri as string | null) ?? null,
@@ -100,7 +119,10 @@ export async function getProfile(): Promise<StudentProfile | null> {
 export async function setProfile(profile: StudentProfile): Promise<void> {
   const next: StudentProfile = {
     ...profile,
-    situation: combineSituation(profile.currentStanding, profile.futureAmbitions),
+    activities: profile.activities.slice(0, ACTIVITIES_MAX),
+    currentStanding: '',
+    futureAmbitions: profile.futureAmbitions.slice(0, AMBITIONS_MAX),
+    situation: combineSituation(profile.activities, profile.futureAmbitions),
   };
   await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(next));
 }
@@ -122,13 +144,13 @@ export async function updateProfile(patch: Partial<StudentProfile>): Promise<Stu
   return next;
 }
 
-/** True when grade, career, and both narrative fields are filled — skip post-upgrade onboarding. */
+/** True when grade, career, activities, and future ambitions are filled — skip post-upgrade onboarding. */
 export function isPremiumProfileComplete(profile: StudentProfile | null): boolean {
   if (!profile) return false;
   return (
     profile.gradeLevel.trim().length > 0 &&
     profile.dreamCareer.trim().length > 0 &&
-    profile.currentStanding.trim().length > 0 &&
+    profile.activities.trim().length > 0 &&
     profile.futureAmbitions.trim().length > 0
   );
 }
@@ -147,7 +169,6 @@ export function hasProfileContent(profile: StudentProfile | null): boolean {
     profile.dreamCareer.trim().length > 0 ||
     profile.activities.trim().length > 0 ||
     (profile.resumeName != null && profile.resumeName.trim().length > 0) ||
-    profile.currentStanding.trim().length > 0 ||
     profile.futureAmbitions.trim().length > 0 ||
     profile.situation.trim().length > 0
   );
@@ -165,12 +186,13 @@ export function profileToGoalText(profile: StudentProfile): string {
   return [
     `I am a ${profile.gradeLevel} student ${uni}.`,
     `I want to become a ${profile.dreamCareer}.`,
-    `Current activities: ${profile.activities}.`,
-    profile.currentStanding.trim() ? `Current standing: ${profile.currentStanding.trim()}` : null,
+    profile.activities.trim()
+      ? `Current activities: ${profile.activities.trim()}`
+      : null,
     profile.futureAmbitions.trim()
       ? `Future ambitions: ${profile.futureAmbitions.trim()}`
       : null,
-    !profile.currentStanding.trim() && !profile.futureAmbitions.trim()
+    !profile.activities.trim() && !profile.futureAmbitions.trim()
       ? profile.situation
       : null,
   ]

@@ -159,7 +159,7 @@ function FullProfile({
   ];
   const activities = activityLines(profile?.activities ?? '');
   const profileNarrative =
-    [profile?.currentStanding, profile?.futureAmbitions]
+    [profile?.activities, profile?.futureAmbitions]
       .map((part) => part?.trim())
       .filter(Boolean)
       .join('\n\n') ||

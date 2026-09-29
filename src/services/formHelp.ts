@@ -24,10 +24,8 @@ export function buildFormHelp(options: {
   const unis = profile?.universities ?? [];
   const activities = profile?.activities.trim();
   const situation = profile?.situation.trim();
-  const standing = profile?.currentStanding.trim();
   const ambitions = profile?.futureAmbitions.trim();
-  const narrative =
-    [standing, ambitions].filter(Boolean).join(' ') || situation;
+  const narrative = ambitions || situation;
   const resumeName = profile?.resumeName?.trim();
   const schoolBit = school ? ` (especially ${school})` : '';
 

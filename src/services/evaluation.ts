@@ -127,7 +127,6 @@ function toProfilePayload(profile: StudentProfile): EvaluateProfilePayload {
     universities: profile.universities,
     dreamCareer: profile.dreamCareer,
     activities: profile.activities,
-    currentStanding: profile.currentStanding,
     futureAmbitions: profile.futureAmbitions,
     situation: profile.situation,
   };
