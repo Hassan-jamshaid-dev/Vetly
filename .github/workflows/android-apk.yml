@@ -1,0 +1,156 @@
+# Standalone Android APK for judges (no EAS cloud build).
+# Release + FLAG_DEBUGGABLE so RevenueCat Test Store (test_) keys work.
+# JS is bundled by Gradle — not expo-dev-client / Metro Connect.
+
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build & release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_PUBLIC_API_URL: https://vetly.expo.app
+      EXPO_PUBLIC_REVENUECAT_API_KEY: ${{ secrets.EXPO_PUBLIC_REVENUECAT_API_KEY }}
+      # Enables plugins/withAndroidDebuggableRelease via app.config.js
+      EAS_BUILD_PROFILE: preview
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Require RevenueCat public SDK key secret
+        run: |
+          if [ -z "$EXPO_PUBLIC_REVENUECAT_API_KEY" ]; then
+            echo "::error::Missing GitHub Actions secret EXPO_PUBLIC_REVENUECAT_API_KEY"
+            exit 1
+          fi
+
+      - name: Prebuild Android native project
+        run: npx expo prebuild --platform android --non-interactive --no-install
+
+      - name: Ensure release is debuggable + debug-signed
+        run: |
+          set -euo pipefail
+          GRADLE="android/app/build.gradle"
+          test -f "$GRADLE"
+
+          # Expo usually already signs release with the debug keystore when no
+          # upload keystore exists. Force it if a release signingConfig is absent.
+          if ! grep -qE 'release\s*\{[^}]*signingConfig\s+signingConfigs\.debug' "$GRADLE"; then
+            python3 - <<'PY'
+          from pathlib import Path
+          path = Path("android/app/build.gradle")
+          text = path.read_text()
+          needle = "release {"
+          idx = text.find(needle)
+          if idx < 0:
+              raise SystemExit("No release { block in app/build.gradle")
+          insert_at = idx + len(needle)
+          snippet = "\n            // CI preview: sideload with debug keystore (no upload keystore)\n            signingConfig signingConfigs.debug"
+          # Only insert if this release block lacks any signingConfig
+          end = text.find("}", insert_at)
+          block = text[insert_at:end]
+          if "signingConfig" not in block:
+              text = text[:insert_at] + snippet + text[insert_at:]
+              path.write_text(text)
+              print("Added release signingConfig signingConfigs.debug")
+          else:
+              print("release signingConfig already present")
+          PY
+          fi
+
+          # Belt-and-suspenders if the config plugin did not run
+          if ! grep -qE 'release\s*\{[^}]*\bdebuggable\s+true\b' "$GRADLE"; then
+            python3 - <<'PY'
+          from pathlib import Path
+          path = Path("android/app/build.gradle")
+          text = path.read_text()
+          needle = "release {"
+          idx = text.find(needle)
+          if idx < 0:
+              raise SystemExit("No release { block in app/build.gradle")
+          insert_at = idx + len(needle)
+          end = text.find("}", insert_at)
+          block = text[insert_at:end]
+          if "debuggable true" not in block:
+              snippet = "\n            // Preview sandbox: RevenueCat Test Store needs FLAG_DEBUGGABLE\n            debuggable true"
+              text = text[:insert_at] + snippet + text[insert_at:]
+              path.write_text(text)
+              print("Added release debuggable true")
+          else:
+              print("release debuggable already present")
+          PY
+          fi
+
+          echo "---- release buildType snippet ----"
+          grep -n -A 20 'buildTypes' "$GRADLE" | head -n 40
+
+      - name: Assemble release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Locate APK
+        id: apk
+        run: |
+          set -euo pipefail
+          APK=$(find android/app/build/outputs/apk -type f -name '*.apk' | head -n 1)
+          if [ -z "$APK" ]; then
+            echo "::error::No APK found under android/app/build/outputs/apk"
+            find android/app/build/outputs -type f || true
+            exit 1
+          fi
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          echo "Found APK: $APK ($(du -h "$APK" | cut -f1))"
+          cp "$APK" vetly-preview.apk
+
+      - name: Publish GitHub Release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG=v-preview
+          # Move tag to this commit; recreate release with the new APK
+          git tag -f "$TAG"
+          git push origin "refs/tags/$TAG" --force
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release delete "$TAG" --yes --cleanup-tag=false
+          fi
+          gh release create "$TAG" vetly-preview.apk \
+            --title "Vetly Android Preview" \
+            --notes "Standalone sideload APK (JS bundled, release + debuggable for RevenueCat Test Store). Not an expo-dev-client build." \
+            --latest=false
+          echo "Download: https://github.com/${{ github.repository }}/releases/download/${TAG}/vetly-preview.apk"
