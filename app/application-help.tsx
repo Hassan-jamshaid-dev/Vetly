@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/Card';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
+import { SoftSkeleton } from '@/components/SoftSkeleton';
 import { getIsPremium } from '@/storage/premiumStorage';
 import { getProfile, hasResumeFile } from '@/storage/profileStorage';
 import { getCurrentEvaluation } from '@/store/evaluationStore';
@@ -62,7 +63,22 @@ export default function ApplicationHelpScreen() {
     }, [router]),
   );
 
-  if (!evaluation || evaluation.hasApplication !== true) return null;
+  if (!evaluation || evaluation.hasApplication !== true) {
+    return (
+      <ScreenWrapper
+        title="How to fill this form"
+        onBack={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace('/(tabs)/home');
+        }}
+        contentContainerStyle={styles.content}
+      >
+        <SoftSkeleton height={28} style={{ width: '70%' }} />
+        <SoftSkeleton height={72} style={{ marginTop: 16, borderRadius: 16 }} />
+        <SoftSkeleton height={120} style={{ marginTop: 16, borderRadius: 16 }} />
+      </ScreenWrapper>
+    );
+  }
 
   const formHelp = evaluation.formHelp.filter((line) => line.trim().length > 0);
   const highlight = uniqueLines([evaluation.helps, evaluation.fills]);
@@ -184,7 +200,9 @@ function StepRow({ index, text, isLast }: { index: number; text: string; isLast:
       <View style={styles.stepBadge}>
         <Text style={styles.stepNum}>{index}</Text>
       </View>
-      <Text style={styles.bulletText}>{text}</Text>
+      <Text style={styles.bulletText} selectable>
+        {text}
+      </Text>
     </View>
   );
 }
@@ -206,7 +224,9 @@ function BulletRow({
           { backgroundColor: tone === 'positive' ? colors.success : colors.danger },
         ]}
       />
-      <Text style={styles.bulletText}>{text}</Text>
+      <Text style={styles.bulletText} selectable>
+        {text}
+      </Text>
     </View>
   );
 }
@@ -302,6 +322,7 @@ const styles = StyleSheet.create({
   },
   bulletText: {
     flex: 1,
+    minWidth: 0,
     fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,

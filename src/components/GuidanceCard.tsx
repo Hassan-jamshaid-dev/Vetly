@@ -7,13 +7,16 @@ type GuidanceCardProps = {
   guidance: string;
 };
 
-/** Unlocked Preparation Guidance on Results, shown only after simulated Premium. */
+/** Unlocked “what to do” guidance on Results (Premium). */
 export function GuidanceCard({ guidance }: GuidanceCardProps) {
+  const body = guidance.trim();
+  if (!body) return null;
+
   return (
     <Card padding={24}>
-      <Text style={styles.kicker}>Preparation</Text>
+      <Text style={styles.kicker}>What to do</Text>
       <Text style={styles.body} selectable>
-        {guidance}
+        {body}
       </Text>
     </Card>
   );
@@ -29,5 +32,7 @@ const styles = StyleSheet.create({
   body: {
     ...type.body,
     marginTop: 12,
+    // Long paragraphs must wrap; never clip mid-sentence.
+    flexShrink: 1,
   },
 });

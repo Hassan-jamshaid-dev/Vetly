@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -14,6 +14,7 @@ import {
   type ScrollView,
 } from 'react-native';
 
+import { Card } from '@/components/Card';
 import { ExampleCard } from '@/components/ExampleCard';
 import { MultilineField } from '@/components/MultilineField';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
@@ -62,6 +63,20 @@ const EXAMPLES = [
   },
 ] as const;
 
+type AnalyzePhase =
+  | 'idle'
+  | 'loading_context'
+  | 'analyzing'
+  | 'comparing_profile'
+  | 'saving';
+
+const PHASE_COPY: Record<Exclude<AnalyzePhase, 'idle'>, string> = {
+  loading_context: 'Loading your goal…',
+  analyzing: 'Analyzing this opportunity…',
+  comparing_profile: 'Comparing to your profile…',
+  saving: 'Saving your result…',
+};
+
 // Stack screen: evaluate an opportunity. Lives above the tabs so Home stays a dashboard.
 export default function EvaluateScreen() {
   const router = useRouter();
@@ -69,14 +84,18 @@ export default function EvaluateScreen() {
 
   const [text, setText] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [phase, setPhase] = useState<AnalyzePhase>('idle');
   const [remaining, setRemaining] = useState<number | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   // Blocks a second Analyze tap while the first is still running.
   const analyzingRef = useRef(false);
+  const cancelledRef = useRef(false);
+
+  const isAnalyzing = phase !== 'idle';
 
   useFocusEffect(
     useCallback(() => {
+      cancelledRef.current = false;
       let cancelled = false;
       (async () => {
         const premium = await getIsPremium();
@@ -91,9 +110,24 @@ export default function EvaluateScreen() {
       })();
       return () => {
         cancelled = true;
+        cancelledRef.current = true;
       };
     }, []),
   );
+
+  // While the API is in flight, advance status copy on real elapsed time — no fake %
+  // and no artificial delay on the request itself.
+  useEffect(() => {
+    if (phase !== 'analyzing' && phase !== 'comparing_profile') return;
+    const preferProfile = isPremium;
+    const timer = setTimeout(() => {
+      setPhase((current) => {
+        if (current === 'analyzing' && preferProfile) return 'comparing_profile';
+        return current;
+      });
+    }, 2800);
+    return () => clearTimeout(timer);
+  }, [phase, isPremium]);
 
   const trimmed = text.trim();
   const canAnalyze = (trimmed.length > 0 || imageUri !== null) && !isAnalyzing;
@@ -104,9 +138,13 @@ export default function EvaluateScreen() {
   };
 
   const handleAnalyze = async () => {
-    if (analyzingRef.current || !canAnalyze) return;
+    // Guard with the ref only — not `canAnalyze` — so Retry from an error alert
+    // still works after phase has been reset in `finally`.
+    if (analyzingRef.current) return;
+    const opportunityText = text.trim();
+    if (!opportunityText && !imageUri) return;
 
-    if (trimmed && isUrlOnlySubmission(trimmed) && !imageUri) {
+    if (opportunityText && isUrlOnlySubmission(opportunityText) && !imageUri) {
       showAlert('Paste the listing', URL_ONLY_MESSAGE);
       return;
     }
@@ -116,10 +154,12 @@ export default function EvaluateScreen() {
 
     try {
       const premium = await getIsPremium();
+      if (cancelledRef.current) return;
       setIsPremium(premium);
 
       if (!premium) {
         const left = await getRemainingToday();
+        if (cancelledRef.current) return;
         setRemaining(left);
         if (left <= 0) {
           router.push('/paywall');
@@ -127,25 +167,30 @@ export default function EvaluateScreen() {
         }
       }
 
-      setIsAnalyzing(true);
+      setPhase('loading_context');
       const [goal, profile, displayName] = await Promise.all([
         getGoal(),
         getProfile(),
         getDisplayName(),
       ]);
+      if (cancelledRef.current) return;
+
+      setPhase(premium && profile ? 'comparing_profile' : 'analyzing');
       // Free: name + goal. Premium: also profile fields (no resume bytes).
       const evaluation = await evaluateOpportunity(
-        { text: trimmed, imageUri },
+        { text: opportunityText, imageUri },
         goal ?? '',
         premium ? profile : null,
         displayName,
       );
+      if (cancelledRef.current) return;
 
+      setPhase('saving');
       if (premium) {
         await appendHistory(evaluation);
       } else {
         const leftAfter = await consumeOne();
-        setRemaining(leftAfter);
+        if (!cancelledRef.current) setRemaining(leftAfter);
       }
       // Free plan: every analyze is stored under this device id. Local History
       // stays Premium-only.
@@ -154,20 +199,33 @@ export default function EvaluateScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {
         /* Haptics are a nicety; ignore devices without them. */
       });
-      router.push('/results');
+      if (!cancelledRef.current) router.push('/results');
     } catch (error) {
+      if (cancelledRef.current) return;
       const message =
         error instanceof Error && error.message.trim().length > 0
           ? error.message
           : 'Please try again.';
-      showAlert('Could not score this', message);
+      showAlert('Could not score this', message, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Try again',
+          onPress: () => {
+            // Ref is already cleared in finally; re-enter after the alert closes.
+            requestAnimationFrame(() => {
+              void handleAnalyze();
+            });
+          },
+        },
+      ]);
     } finally {
       analyzingRef.current = false;
-      setIsAnalyzing(false);
+      if (!cancelledRef.current) setPhase('idle');
     }
   };
 
   const handlePickImage = async () => {
+    if (isAnalyzing) return;
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
@@ -190,11 +248,14 @@ export default function EvaluateScreen() {
   };
 
   const handleExample = (description: string) => {
+    if (isAnalyzing) return;
     Keyboard.dismiss();
     // Examples fill listing text only — never a bare URL (URLs are not fetched).
     setText(description);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
+
+  const statusCopy = phase === 'idle' ? null : PHASE_COPY[phase];
 
   return (
     <ScreenWrapper
@@ -205,7 +266,7 @@ export default function EvaluateScreen() {
       contentContainerStyle={styles.content}
       footer={
         <StickyBottomButton
-          label={isAnalyzing ? 'Analyzing...' : 'Analyze'}
+          label={isAnalyzing ? 'Analyzing…' : 'Analyze'}
           onPress={handleAnalyze}
           disabled={!canAnalyze}
           icon={
@@ -256,13 +317,29 @@ export default function EvaluateScreen() {
           }
         />
 
+        {statusCopy ? (
+          <Card radius={16} padding={16} style={styles.statusCard}>
+            <View style={styles.statusRow}>
+              <ActivityIndicator size="small" color={colors.purple} />
+              <Text style={styles.statusText} accessibilityLiveRegion="polite">
+                {statusCopy}
+              </Text>
+            </View>
+          </Card>
+        ) : null}
+
         <View style={styles.uploadRow}>
           <Pressable
             onPress={handlePickImage}
             disabled={isAnalyzing}
             accessibilityRole="button"
             accessibilityLabel="Upload screenshot"
-            style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
+            accessibilityState={{ disabled: isAnalyzing }}
+            style={({ pressed }) => [
+              styles.pill,
+              isAnalyzing && styles.pillDisabled,
+              pressed && !isAnalyzing && styles.pressed,
+            ]}
           >
             <Ionicons name="image-outline" size={18} color={colors.purple} />
             <Text style={styles.pillLabel}>Screenshot</Text>
@@ -273,6 +350,7 @@ export default function EvaluateScreen() {
               <Image source={{ uri: imageUri }} style={styles.thumb} />
               <Pressable
                 onPress={() => setImageUri(null)}
+                disabled={isAnalyzing}
                 hitSlop={14}
                 accessibilityRole="button"
                 accessibilityLabel="Remove screenshot"
@@ -330,6 +408,23 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     includeFontPadding: false,
   },
+  statusCard: {
+    marginTop: 16,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 24,
+  },
+  statusText: {
+    flex: 1,
+    minWidth: 0,
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textPrimary,
+  },
   uploadRow: {
     marginTop: 20,
     flexDirection: 'row',
@@ -345,6 +440,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  pillDisabled: {
+    opacity: 0.45,
   },
   pillLabel: {
     marginLeft: 8,

@@ -22,6 +22,7 @@ import { getDisplayName, setDisplayName } from '@/storage/nameStorage';
 import { getIsPremium } from '@/storage/premiumStorage';
 import { colors } from '@/theme/colors';
 import { fonts } from '@/theme/typography';
+import { showAlert } from '@/utils/dialog';
 
 /** Free tier: character floor/ceiling. */
 const FREE_MIN_CHARS = 300;
@@ -182,7 +183,7 @@ export default function GoalScreen() {
         resetToHome();
       }
     } catch {
-      // Storage failed; let the user try again.
+      showAlert('Could not save', 'Please try again.');
     } finally {
       savingRef.current = false;
       setSaving(false);

@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AnalysisList } from '@/components/AnalysisList';
 import { Card } from '@/components/Card';
 import { GuidanceCard } from '@/components/GuidanceCard';
 import { InsightRow } from '@/components/InsightRow';
@@ -17,8 +18,8 @@ import { colors } from '@/theme/colors';
 import { fonts, type } from '@/theme/typography';
 import type { Evaluation } from '@/types/evaluation';
 
-// Screen 5: Results. Score, insights, and premium guidance for the evaluation
-// currently in evaluationStore (from Evaluate, History, or Home).
+// Screen 5: Results. Decision → score → why → helps → gaps → downsides → what to do.
+// Analysis is the star; free sees the analysis, Premium unlocks “what to do”.
 export default function ResultsScreen() {
   const router = useRouter();
 
@@ -62,6 +63,11 @@ export default function ResultsScreen() {
   }
 
   const scoreColor = colorForScore(evaluation.score);
+  const whyInsights = evaluation.insights.filter((item) => item.text.trim().length > 0);
+  // Helps = how it helps + gaps it fills (dedupe by trimmed text).
+  const helpsLines = uniqueLines([...evaluation.helps, ...evaluation.fills]);
+  const doesNotHelp = uniqueLines(evaluation.doesNotFill);
+  const downsides = uniqueLines(evaluation.hurts);
 
   return (
     <ScreenWrapper title="Results" onBack={goBack} contentContainerStyle={styles.content}>
@@ -77,23 +83,33 @@ export default function ResultsScreen() {
         </View>
 
         <Card style={styles.scoreCard}>
-          <ScoreRing score={evaluation.score} />
           <View style={[styles.badge, { backgroundColor: `${scoreColor}1F` }]}>
             <Ionicons name={labelIcon(evaluation.score)} size={16} color={scoreColor} />
             <Text style={[styles.badgeText, { color: scoreColor }]}>{evaluation.label}</Text>
           </View>
+          <View style={styles.ringWrap}>
+            <ScoreRing score={evaluation.score} />
+          </View>
         </Card>
 
-        <Text style={styles.sectionHeading}>Key insights</Text>
-        <Card padding={20} style={styles.insightsCard}>
-          {evaluation.insights.map((insight, i) => (
-            <InsightRow
-              key={`insight-${i}`}
-              insight={insight}
-              isLast={i === evaluation.insights.length - 1}
-            />
-          ))}
-        </Card>
+        {whyInsights.length > 0 ? (
+          <View style={styles.whyBlock}>
+            <Text style={styles.sectionHeading}>Why this score</Text>
+            <Card padding={20} style={styles.insightsCard}>
+              {whyInsights.map((insight, i) => (
+                <InsightRow
+                  key={`insight-${i}`}
+                  insight={insight}
+                  isLast={i === whyInsights.length - 1}
+                />
+              ))}
+            </Card>
+          </View>
+        ) : null}
+
+        <AnalysisList heading="How it helps" items={helpsLines} tone="positive" />
+        <AnalysisList heading="What it doesn't help" items={doesNotHelp} tone="neutral" />
+        <AnalysisList heading="Downsides" items={downsides} tone="negative" />
 
         <View style={styles.lockedWrap}>
           {isPremium === true ? (
@@ -136,6 +152,18 @@ export default function ResultsScreen() {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function uniqueLines(items: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of items) {
+    const trimmed = item.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
+}
+
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 function sourceIcon(source: string): IoniconName {
@@ -152,7 +180,7 @@ function labelIcon(score: number): IoniconName {
 
 const FADE_DURATION = 200;
 
-/** Opacity-only enter so the score is the first thing that reads. */
+/** Opacity-only enter so the decision/score read first. */
 function FadeIn({ children }: { children: ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -211,11 +239,10 @@ const styles = StyleSheet.create({
   scoreCard: {
     marginTop: 28,
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 28,
     paddingHorizontal: 24,
   },
   badge: {
-    marginTop: 24,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
@@ -225,12 +252,17 @@ const styles = StyleSheet.create({
   badgeText: {
     marginLeft: 6,
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 18,
+  },
+  ringWrap: {
+    marginTop: 20,
+  },
+  whyBlock: {
+    marginTop: 32,
   },
   sectionHeading: {
     ...type.label,
-    marginTop: 32,
     marginBottom: 14,
     fontFamily: fonts.semibold,
     letterSpacing: 0.8,

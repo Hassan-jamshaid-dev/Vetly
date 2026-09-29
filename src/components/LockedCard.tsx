@@ -19,9 +19,9 @@ export function LockedCard({ onUnlock }: LockedCardProps) {
       <View style={styles.lockCircle}>
         <Ionicons name="lock-closed" size={20} color={colors.purple} />
       </View>
-      <Text style={styles.heading}>Preparation</Text>
+      <Text style={styles.heading}>What to do</Text>
       <Text style={styles.subtext}>
-        How to approach this, what to highlight, and a cover-letter angle — included with Premium.
+        How to approach this, what to prioritize, and a cover-letter angle — included with Premium.
       </Text>
       <View style={styles.buttonWrap}>
         <GradientButton label="Unlock with Premium" onPress={onUnlock} />

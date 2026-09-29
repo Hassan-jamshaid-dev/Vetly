@@ -54,7 +54,10 @@ export default function SplashScreen() {
       }),
     ]).start();
 
-    const minimumWait = new Promise<void>((resolve) => setTimeout(resolve, MIN_SPLASH_MS));
+    let splashTimer: ReturnType<typeof setTimeout> | null = null;
+    const minimumWait = new Promise<void>((resolve) => {
+      splashTimer = setTimeout(resolve, MIN_SPLASH_MS);
+    });
     const isSplashRoute = (route: string) => route === '/' || route === '/index';
 
     // Wait for the timer. Demo reset must NOT run when Splash is only mounted
@@ -92,6 +95,7 @@ export default function SplashScreen() {
 
     return () => {
       cancelled = true;
+      if (splashTimer) clearTimeout(splashTimer);
     };
   }, [brandOpacity, progress, router, screenOpacity]);
 

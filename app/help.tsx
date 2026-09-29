@@ -22,7 +22,7 @@ const STEPS = [
   {
     icon: 'analytics-outline' as const,
     title: 'Read the score',
-    body: 'A 1–10 match against your goal — know before you spend the weekend applying.',
+    body: 'A 1–10 decision plus why it scored that way, what helps, what does not, and the downsides.',
   },
   {
     icon: 'lock-closed-outline' as const,

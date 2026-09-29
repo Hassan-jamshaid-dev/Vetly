@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/theme/colors';
 import { fonts, type } from '@/theme/typography';
-import type { Insight, Sentiment } from '@/types/evaluation';
+import type { Insight } from '@/types/evaluation';
 
 type InsightRowProps = {
   insight: Insight;
@@ -10,13 +10,7 @@ type InsightRowProps = {
   isLast?: boolean;
 };
 
-const SENTIMENT_TITLE: Record<Sentiment, string> = {
-  positive: 'Fits',
-  negative: 'Gap',
-  neutral: 'Note',
-};
-
-/** One insight: coloured dot, a short title, and a single supporting line. */
+/** One “why” line: sentiment-coloured dot + full AI text (no clipping). */
 export function InsightRow({ insight, isLast = false }: InsightRowProps) {
   const dotColor =
     insight.sentiment === 'positive'
@@ -28,12 +22,9 @@ export function InsightRow({ insight, isLast = false }: InsightRowProps) {
   return (
     <View style={[styles.row, !isLast && styles.separator]}>
       <View style={[styles.dot, { backgroundColor: dotColor }]} />
-      <View style={styles.copy}>
-        <Text style={styles.title}>{SENTIMENT_TITLE[insight.sentiment] ?? SENTIMENT_TITLE.neutral}</Text>
-        <Text style={styles.body} selectable>
-          {insight.text}
-        </Text>
-      </View>
+      <Text style={styles.body} selectable>
+        {insight.text}
+      </Text>
     </View>
   );
 }
@@ -42,7 +33,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 16,
+    paddingVertical: 14,
     gap: 12,
   },
   separator: {
@@ -53,23 +44,14 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginTop: 6,
-  },
-  copy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  title: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    lineHeight: 18,
-    letterSpacing: 0.2,
-    color: colors.textPrimary,
+    marginTop: 7,
+    flexShrink: 0,
   },
   body: {
     ...type.bodySmall,
+    flex: 1,
+    minWidth: 0,
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textPrimary,
   },
 });
