@@ -158,7 +158,14 @@ function FullProfile({
     ...(profile?.dreamCareer.trim() ? [profile.dreamCareer.trim()] : []),
   ];
   const activities = activityLines(profile?.activities ?? '');
-  const goalDisplay = displayGoal(goal ?? profile?.situation ?? null);
+  const profileNarrative =
+    [profile?.currentStanding, profile?.futureAmbitions]
+      .map((part) => part?.trim())
+      .filter(Boolean)
+      .join('\n\n') ||
+    profile?.situation?.trim() ||
+    null;
+  const goalDisplay = displayGoal(goal ?? profileNarrative);
   const resumeName = profile?.resumeName?.trim() || null;
 
   return (

@@ -18,8 +18,9 @@ import { colors } from '@/theme/colors';
 import { fonts, type } from '@/theme/typography';
 import type { Evaluation } from '@/types/evaluation';
 
-// Screen 5: Results. Decision → score → why → helps → gaps → downsides → what to do.
+// Screen 5: Results. Decision → score → why → helps → downsides → what to do.
 // Analysis is the star; free sees the analysis, Premium unlocks “what to do”.
+// No “what it doesn’t help with” / doesNotFill section.
 export default function ResultsScreen() {
   const router = useRouter();
 
@@ -63,11 +64,17 @@ export default function ResultsScreen() {
   }
 
   const scoreColor = colorForScore(evaluation.score);
-  const whyInsights = evaluation.insights.filter((item) => item.text.trim().length > 0);
+  // Keep the short top insights only (helps / gap / note) — cap at 4 lines.
+  const whyInsights = evaluation.insights
+    .filter((item) => item.text.trim().length > 0)
+    .slice(0, 4);
   // Helps = how it helps + gaps it fills (dedupe by trimmed text).
-  const helpsLines = uniqueLines([...evaluation.helps, ...evaluation.fills]);
-  const doesNotHelp = uniqueLines(evaluation.doesNotFill);
-  const downsides = uniqueLines(evaluation.hurts);
+  const helpsAll = uniqueLines([...evaluation.helps, ...evaluation.fills]);
+  const downsidesAll = uniqueLines(evaluation.hurts);
+  // Low scores: ~2 helps and ~4 downsides. Higher scores stay short too.
+  const lowScore = evaluation.score >= 1 && evaluation.score <= 4;
+  const helpsLines = helpsAll.slice(0, lowScore ? 2 : 3);
+  const downsides = downsidesAll.slice(0, lowScore ? 4 : 3);
 
   return (
     <ScreenWrapper title="Results" onBack={goBack} contentContainerStyle={styles.content}>
@@ -108,7 +115,6 @@ export default function ResultsScreen() {
         ) : null}
 
         <AnalysisList heading="How it helps" items={helpsLines} tone="positive" />
-        <AnalysisList heading="What it doesn't help" items={doesNotHelp} tone="neutral" />
         <AnalysisList heading="Downsides" items={downsides} tone="negative" />
 
         <View style={styles.lockedWrap}>

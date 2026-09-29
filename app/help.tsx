@@ -12,7 +12,7 @@ const STEPS = [
   {
     icon: 'create-outline' as const,
     title: 'Write your goal',
-    body: 'Who you are now and where you want to go. Free: 300–1000 characters. Premium: 500–5000 characters with grade, universities, and career. Vetly scores every opportunity against this.',
+    body: 'Who you are now and where you want to go. Free: 300–2000 characters. Premium: current standing and future ambitions (1000–5000 each) with grade, universities, and career. Vetly scores every opportunity against this.',
   },
   {
     icon: 'sparkles-outline' as const,
@@ -22,7 +22,7 @@ const STEPS = [
   {
     icon: 'analytics-outline' as const,
     title: 'Read the score',
-    body: 'A 1–10 decision plus why it scored that way, what helps, what does not, and the downsides.',
+    body: 'A 1–10 decision plus why it scored that way, how it helps, and the downsides.',
   },
   {
     icon: 'lock-closed-outline' as const,

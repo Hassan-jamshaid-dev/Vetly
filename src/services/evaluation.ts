@@ -10,6 +10,7 @@ import type {
   EvaluateRequestBody,
 } from '@/types/evaluateApi';
 import type { Evaluation, EvaluationInput } from '@/types/evaluation';
+import { textContainsFormQuestions } from '@/utils/formQuestions';
 import { guessImageMime, readLocalBase64 } from '@/utils/readLocalBase64';
 import { isUrlOnlySubmission, URL_ONLY_MESSAGE } from '@/utils/urlOnly';
 
@@ -113,7 +114,10 @@ export async function evaluateOpportunity(
     throw new Error('Scoring returned an unexpected response.');
   }
 
-  return finish(evaluation);
+  return finish(evaluation, {
+    hasScreenshot,
+    opportunityText: text.trim(),
+  });
 }
 
 function toProfilePayload(profile: StudentProfile): EvaluateProfilePayload {
@@ -123,6 +127,8 @@ function toProfilePayload(profile: StudentProfile): EvaluateProfilePayload {
     universities: profile.universities,
     dreamCareer: profile.dreamCareer,
     activities: profile.activities,
+    currentStanding: profile.currentStanding,
+    futureAmbitions: profile.futureAmbitions,
     situation: profile.situation,
   };
 }
@@ -135,9 +141,20 @@ function readErrorMessage(payload: unknown): string | null {
 
 type Draft = Omit<Evaluation, 'id' | 'label' | 'createdAt'>;
 
-function finish(draft: Draft): Evaluation {
+function finish(
+  draft: Draft,
+  context: { hasScreenshot: boolean; opportunityText: string },
+): Evaluation {
   const score = clampScore(draft.score);
-  const hasApplication = draft.hasApplication === true;
+  let hasApplication = draft.hasApplication === true;
+  // Client gate mirrors the API: prose-only paste must not unlock form help.
+  if (
+    hasApplication &&
+    !context.hasScreenshot &&
+    !textContainsFormQuestions(context.opportunityText)
+  ) {
+    hasApplication = false;
+  }
   const insights = sanitizeInsights(draft.insights);
   if (insights.length === 0) {
     throw new Error('Scoring returned an unexpected response.');
@@ -150,7 +167,7 @@ function finish(draft: Draft): Evaluation {
     formHelp: hasApplication ? stringList(draft.formHelp) : [],
     insights,
     fills: stringList(draft.fills),
-    doesNotFill: stringList(draft.doesNotFill),
+    doesNotFill: [],
     helps: stringList(draft.helps),
     hurts: stringList(draft.hurts),
     guidance: typeof draft.guidance === 'string' ? draft.guidance : '',

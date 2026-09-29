@@ -6,6 +6,8 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -15,10 +17,11 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
-/** iOS padding only. Android already resizes the window (`adjustResize`);
- *  `behavior="height"` double-shrinks the layout so the sticky footer overlaps
- *  the ScrollView and eats TextInput touches. */
-export const keyboardAvoidingBehavior = Platform.OS === 'ios' ? 'padding' : undefined;
+/** Lift body + sticky footer above the IME on iOS and Android.
+ *  Use `padding` on both — skipping Android left tall multiline fields covered,
+ *  and `height` with `softwareKeyboardLayoutMode: "resize"` can double-shrink
+ *  so the footer overlaps the ScrollView and steals taps. */
+export const keyboardAvoidingBehavior = 'padding' as const;
 
 const isWeb = Platform.OS === 'web';
 
@@ -36,6 +39,8 @@ type ScreenWrapperProps = {
   keyboard?: boolean;
   scroll?: boolean;
   scrollRef?: RefObject<ScrollView | null>;
+  /** Optional scroll listener (e.g. keep-focused-input tracking). */
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   contentContainerStyle?: StyleProp<ViewStyle>;
   style?: StyleProp<ViewStyle>;
   /** Override the default light surface. */
@@ -57,6 +62,7 @@ export function ScreenWrapper({
   keyboard = false,
   scroll = true,
   scrollRef,
+  onScroll,
   contentContainerStyle,
   style,
   backgroundColor = colors.backgroundSoft,
@@ -79,6 +85,8 @@ export function ScreenWrapper({
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
       nestedScrollEnabled={false}
       showsVerticalScrollIndicator={false}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
     >
       {children}
     </ScrollView>
@@ -110,7 +118,7 @@ export function ScreenWrapper({
           {background}
         </View>
       ) : null}
-      {keyboard && keyboardAvoidingBehavior ? (
+      {keyboard ? (
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={keyboardAvoidingBehavior}

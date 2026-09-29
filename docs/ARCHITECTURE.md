@@ -25,7 +25,7 @@ src/config/demo.ts           First-run / recording switch
 |---|---|---|
 | `/` | `app/index.tsx` | Splash. Goal saved → Home; otherwise Onboarding. |
 | `/onboarding` | `app/onboarding.tsx` | Get Started (guest) or demo sign-in. |
-| `/goal` | `app/goal.tsx` | Goal capture. Free: 300–1000 characters. Premium: 20+ words, 2000-word cap. |
+| `/goal` | `app/goal.tsx` | Goal capture. Free: 300–2000 characters. Premium redirects to premium-onboarding (current standing + future ambitions, 1000–5000 each). |
 | `/signup` | `app/signup.tsx` | Simulated email / Google / Apple. **Not** Premium. Passwords never saved. |
 | `/(tabs)/home` | `app/(tabs)/home.tsx` | Dashboard. Recent evaluations locked on free. |
 | `/evaluate` | `app/evaluate.tsx` | Paste / screenshot / Analyze. |

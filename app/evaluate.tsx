@@ -31,6 +31,7 @@ import { setCurrentEvaluation } from '@/store/evaluationStore';
 import { colors } from '@/theme/colors';
 import { fonts, type } from '@/theme/typography';
 import { showAlert } from '@/utils/dialog';
+import { textContainsFormQuestions } from '@/utils/formQuestions';
 import { isUrlOnlySubmission, URL_ONLY_MESSAGE } from '@/utils/urlOnly';
 
 const MAX_CHARS = 2000;
@@ -177,13 +178,21 @@ export default function EvaluateScreen() {
 
       setPhase(premium && profile ? 'comparing_profile' : 'analyzing');
       // Free: name + goal. Premium: also profile fields (no resume bytes).
-      const evaluation = await evaluateOpportunity(
+      const rawEvaluation = await evaluateOpportunity(
         { text: opportunityText, imageUri },
         goal ?? '',
         premium ? profile : null,
         displayName,
       );
       if (cancelledRef.current) return;
+
+      // Form-fill help only when the user attached a screenshot OR the pasted
+      // text actually contains questions — never from a model flag alone.
+      const canShowFormHelp =
+        Boolean(imageUri) || textContainsFormQuestions(opportunityText);
+      const evaluation = canShowFormHelp
+        ? rawEvaluation
+        : { ...rawEvaluation, hasApplication: false, formHelp: [] };
 
       setPhase('saving');
       if (premium) {

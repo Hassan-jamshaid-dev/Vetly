@@ -10,6 +10,14 @@ export type StudentProfile = {
   universities: string[];
   dreamCareer: string;
   activities: string;
+  /** Where the student is now (premium). */
+  currentStanding: string;
+  /** Where the student wants to go (premium). */
+  futureAmbitions: string;
+  /**
+   * Combined standing + ambitions for Analyze goal sync and older readers.
+   * Kept in sync on save from the two fields above.
+   */
   situation: string;
   resumeUri: string | null;
   resumeName: string | null;
@@ -20,6 +28,8 @@ export const EMPTY_PROFILE: StudentProfile = {
   universities: [],
   dreamCareer: '',
   activities: '',
+  currentStanding: '',
+  futureAmbitions: '',
   situation: '',
   resumeUri: null,
   resumeName: null,
@@ -29,18 +39,48 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
-function isProfile(value: unknown): value is StudentProfile {
-  if (typeof value !== 'object' || value === null) return false;
-  const item = value as StudentProfile;
-  return (
-    typeof item.gradeLevel === 'string' &&
-    isStringArray(item.universities) &&
-    typeof item.dreamCareer === 'string' &&
-    typeof item.activities === 'string' &&
-    typeof item.situation === 'string' &&
-    (item.resumeUri === null || typeof item.resumeUri === 'string') &&
-    (item.resumeName === null || typeof item.resumeName === 'string')
-  );
+function combineSituation(standing: string, ambitions: string): string {
+  return [standing.trim(), ambitions.trim()].filter(Boolean).join('\n\n');
+}
+
+/** Normalize older profiles that only had `situation`. */
+function normalizeProfile(raw: Record<string, unknown>): StudentProfile | null {
+  if (
+    typeof raw.gradeLevel !== 'string' ||
+    !isStringArray(raw.universities) ||
+    typeof raw.dreamCareer !== 'string' ||
+    typeof raw.activities !== 'string' ||
+    (raw.resumeUri !== null && typeof raw.resumeUri !== 'string') ||
+    (raw.resumeName !== null && typeof raw.resumeName !== 'string')
+  ) {
+    return null;
+  }
+
+  const legacySituation = typeof raw.situation === 'string' ? raw.situation : '';
+  let currentStanding =
+    typeof raw.currentStanding === 'string' ? raw.currentStanding : '';
+  let futureAmbitions =
+    typeof raw.futureAmbitions === 'string' ? raw.futureAmbitions : '';
+
+  // Migrate: old single "situation" box → treat as current standing until they re-edit.
+  if (!currentStanding.trim() && !futureAmbitions.trim() && legacySituation.trim()) {
+    currentStanding = legacySituation;
+  }
+
+  const situation =
+    combineSituation(currentStanding, futureAmbitions) || legacySituation;
+
+  return {
+    gradeLevel: raw.gradeLevel,
+    universities: raw.universities,
+    dreamCareer: raw.dreamCareer,
+    activities: raw.activities,
+    currentStanding,
+    futureAmbitions,
+    situation,
+    resumeUri: (raw.resumeUri as string | null) ?? null,
+    resumeName: (raw.resumeName as string | null) ?? null,
+  };
 }
 
 /** Returns the saved profile, or null if none / storage failed. */
@@ -49,7 +89,8 @@ export async function getProfile(): Promise<StudentProfile | null> {
     const raw = await AsyncStorage.getItem(PROFILE_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    return isProfile(parsed) ? parsed : null;
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    return normalizeProfile(parsed as Record<string, unknown>);
   } catch {
     return null;
   }
@@ -57,7 +98,11 @@ export async function getProfile(): Promise<StudentProfile | null> {
 
 /** Writes the full profile object. */
 export async function setProfile(profile: StudentProfile): Promise<void> {
-  await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  const next: StudentProfile = {
+    ...profile,
+    situation: combineSituation(profile.currentStanding, profile.futureAmbitions),
+  };
+  await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(next));
 }
 
 /** Drops the structured profile. Used by demo launch reset. */
@@ -77,13 +122,14 @@ export async function updateProfile(patch: Partial<StudentProfile>): Promise<Stu
   return next;
 }
 
-/** True when grade, career, and situation are filled — skip post-upgrade onboarding. */
+/** True when grade, career, and both narrative fields are filled — skip post-upgrade onboarding. */
 export function isPremiumProfileComplete(profile: StudentProfile | null): boolean {
   if (!profile) return false;
   return (
     profile.gradeLevel.trim().length > 0 &&
     profile.dreamCareer.trim().length > 0 &&
-    profile.situation.trim().length > 0
+    profile.currentStanding.trim().length > 0 &&
+    profile.futureAmbitions.trim().length > 0
   );
 }
 
@@ -101,6 +147,8 @@ export function hasProfileContent(profile: StudentProfile | null): boolean {
     profile.dreamCareer.trim().length > 0 ||
     profile.activities.trim().length > 0 ||
     (profile.resumeName != null && profile.resumeName.trim().length > 0) ||
+    profile.currentStanding.trim().length > 0 ||
+    profile.futureAmbitions.trim().length > 0 ||
     profile.situation.trim().length > 0
   );
 }
@@ -118,6 +166,14 @@ export function profileToGoalText(profile: StudentProfile): string {
     `I am a ${profile.gradeLevel} student ${uni}.`,
     `I want to become a ${profile.dreamCareer}.`,
     `Current activities: ${profile.activities}.`,
-    profile.situation,
-  ].join(' ');
+    profile.currentStanding.trim() ? `Current standing: ${profile.currentStanding.trim()}` : null,
+    profile.futureAmbitions.trim()
+      ? `Future ambitions: ${profile.futureAmbitions.trim()}`
+      : null,
+    !profile.currentStanding.trim() && !profile.futureAmbitions.trim()
+      ? profile.situation
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
 }

@@ -80,21 +80,27 @@ export default function ResumeScreen() {
 
   const finish = async (saveChanges: boolean) => {
     if (busyRef.current) return;
+    // Continue always saves a picked image; Skip leaves without writing resume fields.
+    if (saveChanges) {
+      if (!file) return;
+      busyRef.current = true;
+      setBusy(true);
+      try {
+        await updateProfile({
+          resumeUri: file.uri,
+          resumeName: file.name,
+        });
+        leave();
+      } catch {
+        busyRef.current = false;
+        setBusy(false);
+        showAlert('Could not save', 'Please try again, or skip for now.');
+      }
+      return;
+    }
     busyRef.current = true;
     setBusy(true);
-    try {
-      if (saveChanges) {
-        await updateProfile({
-          resumeUri: file?.uri ?? null,
-          resumeName: file?.name ?? null,
-        });
-      }
-      leave();
-    } catch {
-      busyRef.current = false;
-      setBusy(false);
-      showAlert('Could not save', 'Please try again, or skip for now.');
-    }
+    leave();
   };
 
   return (
@@ -113,9 +119,10 @@ export default function ResumeScreen() {
         <StickyBottomButton
           label={busy ? 'Continuing...' : 'Continue'}
           onPress={() => {
+            if (!file) return;
             void finish(true);
           }}
-          disabled={busy}
+          disabled={busy || !file}
         >
           {isEdit ? null : (
             <Pressable

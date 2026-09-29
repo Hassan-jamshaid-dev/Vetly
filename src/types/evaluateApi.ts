@@ -6,6 +6,14 @@ export type EvaluateProfilePayload = {
   universities: string[];
   dreamCareer: string;
   activities: string;
+  /** Where the student is now (1000–5000 when provided). */
+  currentStanding: string;
+  /** Where the student wants to go (1000–5000 when provided). */
+  futureAmbitions: string;
+  /**
+   * Combined standing + ambitions for older clients / fallback.
+   * Prefer currentStanding + futureAmbitions when present.
+   */
   situation: string;
 };
 

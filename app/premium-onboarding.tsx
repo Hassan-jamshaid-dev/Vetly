@@ -20,11 +20,13 @@ import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { StickyBottomButton } from '@/components/StickyBottomButton';
 import { VMark } from '@/components/VMark';
 import { Blob } from '@/components/decor/Blob';
+import { useScrollFocusedInput } from '@/hooks/useScrollFocusedInput';
 import { firstQueryParam } from '@/navigation/queryParam';
 import { setGoal } from '@/storage/goalStorage';
 import { getDisplayName, setDisplayName } from '@/storage/nameStorage';
 import {
   getProfile,
+  profileToGoalText,
   setProfile,
   type StudentProfile,
 } from '@/storage/profileStorage';
@@ -45,9 +47,9 @@ const GRADE_LEVELS = [
 ] as const;
 
 const FIELD_MAX = 2000;
-/** Premium goal (situation): character floor/ceiling — not a word count. */
-const SITUATION_MIN = 500;
-const SITUATION_MAX = 5000;
+/** Premium narrative fields: each is 1000–5000 characters. */
+const NARRATIVE_MIN = 1000;
+const NARRATIVE_MAX = 5000;
 const CAREER_MAX = 80;
 const UNI_NAME_MAX = 80;
 const UNI_CHIP_MAX = 8;
@@ -109,6 +111,18 @@ function ProfileDecor({ width, height }: { width: number; height: number }) {
   );
 }
 
+function narrativeState(value: string) {
+  const len = value.length;
+  const trimmed = value.trim().length;
+  return {
+    len,
+    trimmed,
+    over: trimmed > NARRATIVE_MAX,
+    under: trimmed < NARRATIVE_MIN,
+    ok: trimmed >= NARRATIVE_MIN && trimmed <= NARRATIVE_MAX,
+  };
+}
+
 // Screen B: one scrollable "full profile" form. Universities are optional;
 // everything else is required so Analyze has something real to work with.
 export default function PremiumOnboardingScreen() {
@@ -125,9 +139,15 @@ export default function PremiumOnboardingScreen() {
   const [uniDraft, setUniDraft] = useState('');
   const [dreamCareer, setDreamCareer] = useState('');
   const [activities, setActivities] = useState('');
-  const [situation, setSituation] = useState('');
+  const [currentStanding, setCurrentStanding] = useState('');
+  const [futureAmbitions, setFutureAmbitions] = useState('');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const standingRef = useRef<TextInput>(null);
+  const ambitionsRef = useRef<TextInput>(null);
+  const { onScroll, onInputFocus, ensureVisible, keyboardPad } =
+    useScrollFocusedInput(scrollRef);
 
   // Coming back from Resume should not wipe what they already typed.
   useEffect(() => {
@@ -140,25 +160,24 @@ export default function PremiumOnboardingScreen() {
       setUniversities(mergeUniversityNames([], saved.universities.join(',')));
       setDreamCareer(saved.dreamCareer.slice(0, CAREER_MAX));
       setActivities(saved.activities.slice(0, FIELD_MAX));
-      setSituation(saved.situation.slice(0, SITUATION_MAX));
+      setCurrentStanding(saved.currentStanding.slice(0, NARRATIVE_MAX));
+      setFutureAmbitions(saved.futureAmbitions.slice(0, NARRATIVE_MAX));
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const situationLen = situation.length;
-  const situationTrimmed = situation.trim().length;
+  const standing = narrativeState(currentStanding);
+  const ambitions = narrativeState(futureAmbitions);
   const activitiesLen = activities.length;
-  const situationOver = situationTrimmed > SITUATION_MAX;
-  const situationUnder = situationTrimmed < SITUATION_MIN;
   const canContinue =
     displayName.trim().length > 0 &&
     gradeLevel.length > 0 &&
     dreamCareer.trim().length > 0 &&
     activities.trim().length > 0 &&
-    !situationUnder &&
-    !situationOver &&
+    standing.ok &&
+    ambitions.ok &&
     !saving;
 
   const addUniversities = (raw: string) => {
@@ -193,14 +212,16 @@ export default function PremiumOnboardingScreen() {
         universities: nextUniversities,
         dreamCareer: dreamCareer.trim().slice(0, CAREER_MAX),
         activities: activities.trim(),
-        situation: situation.trim(),
+        currentStanding: currentStanding.trim(),
+        futureAmbitions: futureAmbitions.trim(),
+        situation: '',
         resumeUri: existing?.resumeUri ?? null,
         resumeName: existing?.resumeName ?? null,
       };
       await setProfile(profile);
       await setDisplayName(displayName.trim());
-      // Keep Analyze goal in sync with the premium situation narrative (500–5000).
-      await setGoal(profile.situation);
+      // Keep Analyze goal in sync with both premium narrative fields.
+      await setGoal(profileToGoalText(profile));
       // Editing from Profile should land back on the person page, not Resume.
       if (isEdit) {
         if (router.canGoBack()) router.back();
@@ -223,201 +244,252 @@ export default function PremiumOnboardingScreen() {
 
   return (
     <>
-    <ScreenWrapper
-      keyboard
-      onBack={goBack}
-      headerRight={<VMark size={22} />}
-      background={<ProfileDecor width={width} height={height} />}
-      contentContainerStyle={styles.body}
-      footer={
-        <StickyBottomButton
-          label={saving ? 'Saving...' : isEdit ? 'Save' : 'Continue'}
-          onPress={() => {
-            void handleContinue();
-          }}
-          disabled={!canContinue}
-          trailingIcon={
-            saving || isEdit ? undefined : (
-              <Ionicons name="arrow-forward" size={18} color={colors.white} />
-            )
+      <ScreenWrapper
+        keyboard
+        onBack={goBack}
+        headerRight={<VMark size={22} />}
+        background={<ProfileDecor width={width} height={height} />}
+        scrollRef={scrollRef}
+        onScroll={onScroll}
+        contentContainerStyle={[styles.body, { paddingBottom: 12 + keyboardPad }]}
+        footer={
+          <StickyBottomButton
+            label={saving ? 'Saving...' : isEdit ? 'Save' : 'Continue'}
+            onPress={() => {
+              void handleContinue();
+            }}
+            disabled={!canContinue}
+            trailingIcon={
+              saving || isEdit ? undefined : (
+                <Ionicons name="arrow-forward" size={18} color={colors.white} />
+              )
+            }
+          />
+        }
+      >
+        <Text style={styles.heading}>{isEdit ? 'Update your profile' : 'Tell us about you'}</Text>
+        <Text style={styles.subheading}>
+          {isEdit
+            ? 'Grade, career, current standing, and future ambitions used when Vetly evaluates opportunities for you.'
+            : 'Grade, career, current standing, and future ambitions — one step at a time. Premium uses this when it evaluates opportunities for you.'}
+        </Text>
+
+        <FieldHeader
+          icon="person-outline"
+          label="Your Name"
+          infoTitle="Your Name"
+          infoMessage="Shown on your profile on this device. No account required."
+        />
+        <Card radius={20} padding={0} style={styles.fieldCard}>
+          <View style={styles.inputRow}>
+            <Ionicons name="person-outline" size={18} color={colors.placeholder} />
+            <TextInput
+              value={displayName}
+              onChangeText={(value) => setDisplayNameState(value.slice(0, NAME_MAX))}
+              placeholder="First name or nickname"
+              placeholderTextColor={colors.placeholder}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={NAME_MAX}
+              onFocus={(event) => onInputFocus(event.target as unknown as TextInput)}
+              style={styles.singleInput}
+              accessibilityLabel="Your name"
+            />
+          </View>
+        </Card>
+
+        <FieldHeader
+          icon="school-outline"
+          label="Grade Level"
+          infoTitle="Grade Level"
+          infoMessage="Your current year in school. Vetly uses this so it does not recommend opportunities that are too early or too late."
+        />
+        <Card radius={20} padding={0} style={styles.fieldCard}>
+          <Pressable
+            onPress={() => {
+              Keyboard.dismiss();
+              setGradeOpen(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Grade level"
+            accessibilityState={{ expanded: gradeOpen }}
+            style={({ pressed }) => [styles.selectRow, pressed && styles.pressed]}
+          >
+            <Text
+              style={gradeLevel ? styles.inputValue : styles.placeholder}
+              numberOfLines={1}
+            >
+              {gradeLevel || 'Select your grade'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={colors.chevron} />
+          </Pressable>
+        </Card>
+
+        <FieldHeader
+          icon="business-outline"
+          label="Target Universities"
+          infoTitle="Target Universities"
+          infoMessage="Optional. Add schools you care about so Premium can aim evaluations at those programs. Type a name, then comma or return."
+        />
+        {universities.length > 0 ? (
+          <View style={styles.chips}>
+            {universities.map((uni) => (
+              <Pressable
+                key={uni}
+                onPress={() => removeUniversity(uni)}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${uni}`}
+                style={({ pressed }) => [styles.uniChip, pressed && styles.pressed]}
+              >
+                <Text style={styles.uniChipLabel}>{uni}</Text>
+                <Ionicons name="close" size={14} color={colors.purple} />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        <Card radius={20} padding={0} style={styles.fieldCard}>
+          <View style={styles.inputRow}>
+            <Ionicons name="search-outline" size={18} color={colors.placeholder} />
+            <TextInput
+              value={uniDraft}
+              onChangeText={handleUniChange}
+              onSubmitEditing={() => addUniversities(uniDraft)}
+              placeholder="Type a school, then comma or return"
+              placeholderTextColor={colors.placeholder}
+              autoCapitalize="words"
+              returnKeyType="done"
+              maxLength={UNI_NAME_MAX}
+              onFocus={(event) => onInputFocus(event.target as unknown as TextInput)}
+              style={styles.singleInput}
+              accessibilityLabel="Add a target university"
+            />
+          </View>
+        </Card>
+
+        <FieldHeader
+          icon="briefcase-outline"
+          label="Dream Career"
+          infoTitle="Dream Career"
+          infoMessage="The role, field, or company you want to build toward. Premium uses this when it evaluates an opportunity."
+        />
+        <Card radius={20} padding={0} style={styles.fieldCard}>
+          <View style={styles.inputRow}>
+            <Ionicons name="attach-outline" size={18} color={colors.placeholder} />
+            <TextInput
+              value={dreamCareer}
+              onChangeText={(value) => setDreamCareer(value.slice(0, CAREER_MAX))}
+              placeholder="e.g. Computer engineer, founder,"
+              placeholderTextColor={colors.placeholder}
+              autoCapitalize="sentences"
+              maxLength={CAREER_MAX}
+              onFocus={(event) => onInputFocus(event.target as unknown as TextInput)}
+              style={styles.singleInput}
+              accessibilityLabel="Dream career"
+            />
+          </View>
+        </Card>
+
+        <FieldHeader
+          icon="star-outline"
+          label="Current Activities"
+          infoTitle="Current Activities"
+          infoMessage="Clubs, internships, projects, sports, and other things you are doing now."
+        />
+        <MultilineField
+          value={activities}
+          onChangeText={(value) => setActivities(value.slice(0, FIELD_MAX))}
+          maxLength={FIELD_MAX}
+          minHeight={88}
+          placeholder="Clubs, internships, projects, sports…"
+          accessibilityLabel="Current activities"
+          onFocus={(event) => onInputFocus(event.target as unknown as TextInput)}
+          counter={`${activitiesLen}/${FIELD_MAX}`}
+        />
+
+        <FieldHeader
+          icon="locate-outline"
+          label="Current Standing"
+          infoTitle="Current Standing"
+          infoMessage="Where you are right now — skills, progress, constraints, and what your profile already shows. 1000–5000 characters."
+        />
+        <Text style={styles.limitCaption}>
+          {NARRATIVE_MIN}–{NARRATIVE_MAX} characters
+        </Text>
+        <MultilineField
+          ref={standingRef}
+          value={currentStanding}
+          onChangeText={(value) => setCurrentStanding(value.slice(0, NARRATIVE_MAX))}
+          maxLength={NARRATIVE_MAX}
+          minHeight={140}
+          placeholder="Where you are now: skills, projects, gaps, time constraints, and what is already on your record."
+          accessibilityLabel="Current standing"
+          onFocus={() => onInputFocus(standingRef.current)}
+          onContentSizeChange={() => ensureVisible(standingRef.current)}
+          hint={
+            standing.over
+              ? `Please trim to ${NARRATIVE_MAX} characters.`
+              : standing.len > 0 && standing.under
+                ? `At least ${NARRATIVE_MIN} characters.`
+                : undefined
+          }
+          counter={
+            <Text
+              style={[
+                styles.counter,
+                standing.over
+                  ? styles.counterError
+                  : standing.ok
+                    ? styles.counterOk
+                    : styles.counterMuted,
+              ]}
+            >
+              {standing.len}/{NARRATIVE_MAX}
+            </Text>
           }
         />
-      }
-    >
-          <Text style={styles.heading}>{isEdit ? 'Update your profile' : 'Tell us about you'}</Text>
-          <Text style={styles.subheading}>
-            {isEdit
-              ? 'Grade, career, and situation used when Vetly evaluates opportunities for you.'
-              : 'Grade, career, and situation — one step at a time. Premium uses this when it evaluates opportunities for you.'}
-          </Text>
 
-            <FieldHeader
-              icon="person-outline"
-              label="Your Name"
-              infoTitle="Your Name"
-              infoMessage="Shown on your profile on this device. No account required."
-            />
-            <Card radius={20} padding={0} style={styles.fieldCard}>
-              <View style={styles.inputRow}>
-                <Ionicons name="person-outline" size={18} color={colors.placeholder} />
-                <TextInput
-                  value={displayName}
-                  onChangeText={(value) => setDisplayNameState(value.slice(0, NAME_MAX))}
-                  placeholder="First name or nickname"
-                  placeholderTextColor={colors.placeholder}
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  maxLength={NAME_MAX}
-                  style={styles.singleInput}
-                  accessibilityLabel="Your name"
-                />
-              </View>
-            </Card>
-
-            <FieldHeader
-              icon="school-outline"
-              label="Grade Level"
-              infoTitle="Grade Level"
-              infoMessage="Your current year in school. Vetly uses this so it does not recommend opportunities that are too early or too late."
-            />
-            <Card radius={20} padding={0} style={styles.fieldCard}>
-              <Pressable
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setGradeOpen(true);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Grade level"
-                accessibilityState={{ expanded: gradeOpen }}
-                style={({ pressed }) => [styles.selectRow, pressed && styles.pressed]}
-              >
-                <Text
-                  style={gradeLevel ? styles.inputValue : styles.placeholder}
-                  numberOfLines={1}
-                >
-                  {gradeLevel || 'Select your grade'}
-                </Text>
-                <Ionicons name="chevron-down" size={18} color={colors.chevron} />
-              </Pressable>
-            </Card>
-
-            <FieldHeader
-              icon="business-outline"
-              label="Target Universities"
-              infoTitle="Target Universities"
-              infoMessage="Optional. Add schools you care about so Premium can aim evaluations at those programs. Type a name, then comma or return."
-            />
-            {universities.length > 0 ? (
-              <View style={styles.chips}>
-                {universities.map((uni) => (
-                  <Pressable
-                    key={uni}
-                    onPress={() => removeUniversity(uni)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove ${uni}`}
-                    style={({ pressed }) => [styles.uniChip, pressed && styles.pressed]}
-                  >
-                    <Text style={styles.uniChipLabel}>{uni}</Text>
-                    <Ionicons name="close" size={14} color={colors.purple} />
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
-            <Card radius={20} padding={0} style={styles.fieldCard}>
-              <View style={styles.inputRow}>
-                <Ionicons name="search-outline" size={18} color={colors.placeholder} />
-                <TextInput
-                  value={uniDraft}
-                  onChangeText={handleUniChange}
-                  onSubmitEditing={() => addUniversities(uniDraft)}
-                  placeholder="Type a school, then comma or return"
-                  placeholderTextColor={colors.placeholder}
-                  autoCapitalize="words"
-                  returnKeyType="done"
-                  maxLength={UNI_NAME_MAX}
-                  style={styles.singleInput}
-                  accessibilityLabel="Add a target university"
-                />
-              </View>
-            </Card>
-
-            <FieldHeader
-              icon="briefcase-outline"
-              label="Dream Career"
-              infoTitle="Dream Career"
-              infoMessage="The role, field, or company you want to build toward. Premium uses this when it evaluates an opportunity."
-            />
-            <Card radius={20} padding={0} style={styles.fieldCard}>
-              <View style={styles.inputRow}>
-                <Ionicons name="attach-outline" size={18} color={colors.placeholder} />
-                <TextInput
-                  value={dreamCareer}
-                  onChangeText={(value) => setDreamCareer(value.slice(0, CAREER_MAX))}
-                  placeholder="e.g. Computer engineer, founder,"
-                  placeholderTextColor={colors.placeholder}
-                  autoCapitalize="sentences"
-                  maxLength={CAREER_MAX}
-                  style={styles.singleInput}
-                  accessibilityLabel="Dream career"
-                />
-              </View>
-            </Card>
-
-            <FieldHeader
-              icon="star-outline"
-              label="Current Activities"
-              infoTitle="Current Activities"
-              infoMessage="Clubs, internships, projects, sports, and other things you are doing now."
-            />
-            <MultilineField
-              value={activities}
-              onChangeText={(value) => setActivities(value.slice(0, FIELD_MAX))}
-              maxLength={FIELD_MAX}
-              minHeight={88}
-              placeholder="Clubs, internships, projects, sports…"
-              accessibilityLabel="Current activities"
-              counter={`${activitiesLen}/${FIELD_MAX}`}
-            />
-
-            <FieldHeader
-              icon="locate-outline"
-              label="Your Situation and Goals"
-              infoTitle="Your Situation and Goals"
-              infoMessage="Where you are now, what you want next, and any constraints Vetly should know when it evaluates opportunities. 500–5000 characters."
-            />
-            <Text style={styles.limitCaption}>
-              {SITUATION_MIN}–{SITUATION_MAX} characters
+        <FieldHeader
+          icon="rocket-outline"
+          label="Future Ambitions"
+          infoTitle="Future Ambitions"
+          infoMessage="Where you want to go next — universities, career, milestones, and the story you are trying to build. 1000–5000 characters."
+        />
+        <Text style={styles.limitCaption}>
+          {NARRATIVE_MIN}–{NARRATIVE_MAX} characters
+        </Text>
+        <MultilineField
+          ref={ambitionsRef}
+          value={futureAmbitions}
+          onChangeText={(value) => setFutureAmbitions(value.slice(0, NARRATIVE_MAX))}
+          maxLength={NARRATIVE_MAX}
+          minHeight={140}
+          placeholder="Where you want to go: target schools, career path, milestones, and what success looks like for you."
+          accessibilityLabel="Future ambitions"
+          onFocus={() => onInputFocus(ambitionsRef.current)}
+          onContentSizeChange={() => ensureVisible(ambitionsRef.current)}
+          hint={
+            ambitions.over
+              ? `Please trim to ${NARRATIVE_MAX} characters.`
+              : ambitions.len > 0 && ambitions.under
+                ? `At least ${NARRATIVE_MIN} characters.`
+                : undefined
+          }
+          counter={
+            <Text
+              style={[
+                styles.counter,
+                ambitions.over
+                  ? styles.counterError
+                  : ambitions.ok
+                    ? styles.counterOk
+                    : styles.counterMuted,
+              ]}
+            >
+              {ambitions.len}/{NARRATIVE_MAX}
             </Text>
-            <MultilineField
-              value={situation}
-              onChangeText={(value) => setSituation(value.slice(0, SITUATION_MAX))}
-              maxLength={SITUATION_MAX}
-              minHeight={110}
-              placeholder="Where you are now, what you want next, and any constraints Vetly should know."
-              accessibilityLabel="Situation and goals"
-              hint={
-                situationOver
-                  ? `Please trim to ${SITUATION_MAX} characters.`
-                  : situationLen > 0 && situationUnder
-                    ? `At least ${SITUATION_MIN} characters.`
-                    : undefined
-              }
-              counter={
-                <Text
-                  style={[
-                    styles.counter,
-                    situationOver
-                      ? styles.counterError
-                      : situationTrimmed >= SITUATION_MIN
-                        ? styles.counterOk
-                        : styles.counterMuted,
-                  ]}
-                >
-                  {situationLen}/{SITUATION_MAX}
-                </Text>
-              }
-            />
-    </ScreenWrapper>
+          }
+        />
+      </ScreenWrapper>
 
       <Modal
         visible={gradeOpen}

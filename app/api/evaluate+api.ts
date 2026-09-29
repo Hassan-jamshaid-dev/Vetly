@@ -9,6 +9,7 @@ import type {
   EvaluateRequestBody,
 } from '@/types/evaluateApi';
 import type { Insight, Sentiment } from '@/types/evaluation';
+import { textContainsFormQuestions } from '@/utils/formQuestions';
 import { isUrlOnlySubmission, URL_ONLY_MESSAGE } from '@/utils/urlOnly';
 
 const corsHeaders = {
@@ -27,8 +28,8 @@ Your job is NOT to tell students that every opportunity is valuable.
 Your job is to determine whether pursuing a specific opportunity is a rational use of THIS student's limited time, given ONLY the information actually provided about them and the opportunity.
 
 Student data rules (Vetly product reality):
-- Free users only have a name and a goal (goal is 300-1000 characters).
-- Premium users also may have grade, universities, career, activities, and situation (goal/situation are 500-5000 characters when provided).
+- Free users only have a name and a goal (goal is 300-2000 characters).
+- Premium users also may have grade, universities, career, activities, currentStanding (1000-5000), and futureAmbitions (1000-5000). Older payloads may send a combined "situation" field instead.
 - Only use fields that were actually provided in this request. Do not invent a portfolio, deadlines, skills, extracurriculars, academic stage, target universities, or career details the payload does not contain.
 - If a field is missing, do not assume a default profile. Score from what is present and state uncertainty when missing details matter.
 
@@ -387,7 +388,7 @@ Never invent:
 - Organizer reputation
 - Expected outcomes
 - Time commitment
-- Portfolio items, skills, grades, universities, activities, or situation details that were not provided
+- Portfolio items, skills, grades, universities, activities, current standing, or future ambitions that were not provided
 
 If important information is missing, explicitly account for that uncertainty.
 
@@ -452,9 +453,21 @@ Trajectory coherence > random prestige
 
 However, do not treat these as universal rules. Evaluate the actual student's context.
 
+OUTPUT LENGTH AND STRUCTURE (STRICT)
+
+Keep the response short enough for a phone Results screen. Do not dump walls of bullet points.
+
+- "insights": exactly 3-4 concise lines that explain WHY the score exists (helps / gap / note). One short sentence each. Never more than 4.
+- Do NOT invent a "doesNotFill" / "what it doesn't help with" list. That section was removed from the app. If you emit "doesNotFill", it must be []. Put residual gaps into insights or hurts instead.
+- Score 1-4 (weak/poor fit): about 2 items in "helps" (fills may add at most a couple of short gap-fill lines), and about 4 items in "hurts". Prefer hurts over padding helps.
+- Score 5-10: keep "helps", "fills", and "hurts" short too — roughly 2-3 helps and 2-3 hurts. No filler.
+- "guidance": one practical paragraph for what to do next. Not a second essay.
+- "hasApplication" / "formHelp" only when the supplied pasted text or screenshot actually contains form questions (not merely an apply CTA).
+- Premium profile context may include separate "Current standing" and "Future ambitions" fields (plus legacy "Situation" on older payloads). Use both when present; do not collapse them into one invented field.
+
 OUTPUT
 
-Return ONLY valid JSON matching this exact schema:
+Return ONLY valid JSON matching this exact schema (shorter is better — no padding):
 
 {
   "title": string,
@@ -467,13 +480,14 @@ Return ONLY valid JSON matching this exact schema:
     }
   ],
   "fills": string[],
-  "doesNotFill": string[],
   "helps": string[],
   "hurts": string[],
   "guidance": string,
   "hasApplication": boolean,
   "formHelp": string[]
 }
+
+Do NOT include a "doesNotFill" / "what it doesn't help with" field. That section was removed.
 
 FIELD REQUIREMENTS
 
@@ -490,29 +504,33 @@ Must be exactly one of:
 Integer from 1-10.
 
 "insights":
-Exactly 3-4 concise but meaningful observations.
-These should explain WHY the score exists, not simply repeat the listing.
+Exactly 3-4 concise observations that explain WHY the score exists (top insight style: how it helps / gap / note). Do not pad.
 
 "fills":
-Specific gaps in the student's current profile that this opportunity addresses.
-
-"doesNotFill":
-Important gaps that this opportunity does not address.
+Specific gaps in the student's current profile that this opportunity addresses. Keep short.
 
 "helps":
 Concrete ways this opportunity could help the student's trajectory or application.
+- If score is 1-4: about 2 valid points only. Do not pad with weak filler.
+- If score is 5-10: about 2-3 concrete points (still no fluff).
+Combine "how it helps" and "gaps it fills" into helps + fills — the UI merges them.
 
-"hurts":
-Concrete risks, opportunity costs, time costs, redundancy, preparation gaps, or trajectory conflicts.
+"hurts" (Downsides):
+- If score is 1-4: about 4 concrete risks, opportunity costs, time costs, redundancy, preparation gaps, or trajectory conflicts.
+- If score is 5-10: about 2-3 real downsides. Prefer real points over padded lists. Higher scores stay short too.
 
 "guidance":
-A practical paragraph telling the student what they should consider doing, including preparation requirements, timing, and what they should prioritize if they pursue it.
+A practical "what to do" paragraph (Premium-only in the app). Include preparation, timing, and priorities if they pursue it. Keep it tight.
 
 "hasApplication":
-true ONLY if the provided material is actually an application/form that the student needs to complete.
+true ONLY when BOTH are true:
+1) The material is actually an application / form the student must complete (questions, prompts, or fields to answer), AND
+2) Either a screenshot was attached OR the pasted text itself contains those questions / form fields.
+
+Set hasApplication to false when the user only described an opportunity in prose (no form questions), even if it is an opportunity they could apply to later. Do NOT show form-filling help for prose-only opportunity descriptions.
 
 "formHelp":
-If hasApplication is true, provide ordered, practical form-filling guidance based ONLY on the provided information.
+If hasApplication is true, provide ordered, practical form-filling steps based ONLY on the provided information and profile fields (including currentStanding / futureAmbitions when present).
 If hasApplication is false, return [].
 
 FINAL BEHAVIOR RULE
@@ -530,7 +548,7 @@ Before assigning the score, mentally answer:
 9. Is there a better use of the same time based on their stated trajectory?
 10. Given all of that, what score honestly represents its value RIGHT NOW?
 
-Then output ONLY the JSON.`;
+Then output ONLY the JSON. Stay brutally honest. Prefer short, high-signal lists over long ones.`;
 
 export function OPTIONS() {
   return new Response(null, { status: 204, headers: corsHeaders });
@@ -596,7 +614,7 @@ export async function POST(request: Request) {
     if (combinedText.length > 12000) {
       return jsonError('Opportunity text is too long.', 400);
     }
-    if (goal.length > 5000) {
+    if (goal.length > 11000) {
       return jsonError('Goal text is too long.', 400);
     }
     if (screenshotBase64 && screenshotBase64.length > MAX_BASE64_CHARS) {
@@ -616,7 +634,10 @@ export async function POST(request: Request) {
     });
 
     const score = clampScore(draft.score);
-    const hasApplication = draft.hasApplication === true;
+    // Server gate: form help only when screenshot OR pasted text has real questions.
+    const hasApplication =
+      draft.hasApplication === true &&
+      (hasScreenshot || textContainsFormQuestions(combinedText));
     const payload: EvaluateApiSuccess = {
       evaluation: {
         title: draft.title,
@@ -624,7 +645,7 @@ export async function POST(request: Request) {
         score,
         insights: draft.insights,
         fills: draft.fills,
-        doesNotFill: draft.doesNotFill,
+        doesNotFill: [],
         helps: draft.helps,
         hurts: draft.hurts,
         guidance: draft.guidance,
@@ -662,12 +683,22 @@ function sanitizeProfile(raw: unknown): EvaluateProfilePayload | null {
   const universities = Array.isArray(p.universities)
     ? p.universities.filter((u): u is string => typeof u === 'string').slice(0, 12)
     : [];
+  const currentStanding =
+    typeof p.currentStanding === 'string' ? p.currentStanding.slice(0, 5000) : '';
+  const futureAmbitions =
+    typeof p.futureAmbitions === 'string' ? p.futureAmbitions.slice(0, 5000) : '';
+  const legacySituation = typeof p.situation === 'string' ? p.situation.slice(0, 10000) : '';
+  const situation =
+    [currentStanding.trim(), futureAmbitions.trim()].filter(Boolean).join('\n\n') ||
+    legacySituation;
   return {
     gradeLevel: typeof p.gradeLevel === 'string' ? p.gradeLevel.slice(0, 80) : '',
     universities,
     dreamCareer: typeof p.dreamCareer === 'string' ? p.dreamCareer.slice(0, 200) : '',
     activities: typeof p.activities === 'string' ? p.activities.slice(0, 1500) : '',
-    situation: typeof p.situation === 'string' ? p.situation.slice(0, 5000) : '',
+    currentStanding,
+    futureAmbitions,
+    situation,
   };
 }
 
@@ -723,11 +754,21 @@ async function scoreWithOpenAI(options: {
           ? `- Dream career: ${profile!.dreamCareer.trim()}`
           : null,
         profile!.activities.trim() ? `- Activities: ${profile!.activities.trim()}` : null,
-        profile!.situation.trim() ? `- Situation: ${profile!.situation.trim()}` : null,
+        profile!.currentStanding.trim()
+          ? `- Current standing: ${profile!.currentStanding.trim()}`
+          : null,
+        profile!.futureAmbitions.trim()
+          ? `- Future ambitions: ${profile!.futureAmbitions.trim()}`
+          : null,
+        !profile!.currentStanding.trim() &&
+        !profile!.futureAmbitions.trim() &&
+        profile!.situation.trim()
+          ? `- Situation: ${profile!.situation.trim()}`
+          : null,
       ]
         .filter(Boolean)
         .join('\n') || 'Premium plan, but no optional profile fields were filled in.'
-    : 'Free plan: only name (if provided) and goal are available. Do not invent grade, universities, career, activities, situation, portfolio, or deadlines.';
+    : 'Free plan: only name (if provided) and goal are available. Do not invent grade, universities, career, activities, current standing, future ambitions, portfolio, or deadlines.';
 
   const opportunityBlock =
     opportunityText.length > 0
@@ -825,7 +866,15 @@ function listIncludedFields(options: {
   if (options.profile.universities.length > 0) fields.push('universities');
   if (options.profile.dreamCareer.trim()) fields.push('career');
   if (options.profile.activities.trim()) fields.push('activities');
-  if (options.profile.situation.trim()) fields.push('situation');
+  if (options.profile.currentStanding.trim()) fields.push('currentStanding');
+  if (options.profile.futureAmbitions.trim()) fields.push('futureAmbitions');
+  if (
+    !options.profile.currentStanding.trim() &&
+    !options.profile.futureAmbitions.trim() &&
+    options.profile.situation.trim()
+  ) {
+    fields.push('situation');
+  }
   return fields;
 }
 
@@ -861,16 +910,20 @@ function parseModelDraft(
   const source = normalizeSource(rawSource, opportunityText, hasScreenshot);
 
   const hasApplication = obj.hasApplication === true;
+  // Cap list sizes to match Results: low scores ~2 helps / ~4 hurts; higher stay short.
+  const score = clampScore(typeof obj.score === 'number' ? obj.score : Number(obj.score));
+  const helpsCap = score <= 4 ? 2 : 3;
+  const hurtsCap = score <= 4 ? 4 : 3;
   return {
     title,
     source,
-    score: clampScore(typeof obj.score === 'number' ? obj.score : Number(obj.score)),
-    insights,
-    fills: stringList(obj.fills),
-    doesNotFill: stringList(obj.doesNotFill),
-    helps: stringList(obj.helps),
-    hurts: stringList(obj.hurts),
-    guidance: typeof obj.guidance === 'string' ? obj.guidance.trim().slice(0, 4000) : '',
+    score,
+    insights: insights.slice(0, 4),
+    fills: stringList(obj.fills).slice(0, helpsCap),
+    doesNotFill: [],
+    helps: stringList(obj.helps).slice(0, helpsCap),
+    hurts: stringList(obj.hurts).slice(0, hurtsCap),
+    guidance: typeof obj.guidance === 'string' ? obj.guidance.trim().slice(0, 2500) : '',
     hasApplication,
     formHelp: hasApplication ? stringList(obj.formHelp) : [],
   };

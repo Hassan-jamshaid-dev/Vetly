@@ -24,13 +24,17 @@ export function buildFormHelp(options: {
   const unis = profile?.universities ?? [];
   const activities = profile?.activities.trim();
   const situation = profile?.situation.trim();
+  const standing = profile?.currentStanding.trim();
+  const ambitions = profile?.futureAmbitions.trim();
+  const narrative =
+    [standing, ambitions].filter(Boolean).join(' ') || situation;
   const resumeName = profile?.resumeName?.trim();
   const schoolBit = school ? ` (especially ${school})` : '';
 
   const steps = [
     `In the “about you” / year field, write ${grade} and that you are aiming at ${career}${schoolBit}.`,
-    situation
-      ? `In the why / motivation box, use this as the spine: ${situation}. Then add one sentence on why ${title} is the next step, not a side quest.`
+    narrative
+      ? `In the why / motivation box, use this as the spine: ${narrative}. Then add one sentence on why ${title} is the next step, not a side quest.`
       : `In the why / motivation box, connect ${title} to ${focus} in one sentence. If you cannot, that is your answer.`,
     activities
       ? `In experience / activities, pick one or two lines from what you already listed (${activities}) and make them specific: role, what you shipped, what changed.`

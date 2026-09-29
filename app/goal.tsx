@@ -15,6 +15,7 @@ import { Card } from '@/components/Card';
 import { MultilineField } from '@/components/MultilineField';
 import { ScreenWrapper } from '@/components/ScreenWrapper';
 import { StickyBottomButton } from '@/components/StickyBottomButton';
+import { useScrollFocusedInput } from '@/hooks/useScrollFocusedInput';
 import { firstQueryParam } from '@/navigation/queryParam';
 import { useResetToHome } from '@/navigation/useResetToHome';
 import { getGoal, setGoal } from '@/storage/goalStorage';
@@ -26,14 +27,14 @@ import { showAlert } from '@/utils/dialog';
 
 /** Free tier: character floor/ceiling. */
 const FREE_MIN_CHARS = 300;
-const FREE_MAX_CHARS = 1000;
+const FREE_MAX_CHARS = 2000;
 const NAME_MAX = 80;
 
 const PLACEHOLDER_TEXT =
   'Example: I am a Grade 11 student aiming for top universities like Waterloo and MIT. I want to study Computer Engineering and eventually found a tech startup. Right now I am building my profile through extracurriculars and self-learning programming and AI. I care more about shipping projects I can show than collecting certificates, and I want to know which opportunities actually move that story forward.';
 
 // Screen 3: Goal. Free onboarding + "Edit your goal" (Profile / Settings).
-// Free: 300–1000 characters. Premium users are redirected to premium-onboarding.
+// Free: 300–2000 characters. Premium users are redirected to premium-onboarding.
 export default function GoalScreen() {
   const router = useRouter();
   const resetToHome = useResetToHome();
@@ -44,13 +45,13 @@ export default function GoalScreen() {
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [tierReady, setTierReady] = useState(false);
-  const [keyboardPad, setKeyboardPad] = useState(0);
   // Guards against a second tap landing while the first save is still running.
   const savingRef = useRef(false);
   const nameInputRef = useRef<TextInput>(null);
   const goalInputRef = useRef<TextInput>(null);
   const scrollRef = useRef<ScrollView>(null);
-  const goalBlockY = useRef(0);
+  const { onScroll, onInputFocus, ensureVisible, keyboardPad } =
+    useScrollFocusedInput(scrollRef);
 
   // Premium users edit the structured profile, not this free goal screen.
   useFocusEffect(
@@ -84,30 +85,8 @@ export default function GoalScreen() {
     };
   }, [tierReady]);
 
-  // Keep the focused goal field (and caret) above the keyboard.
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const onShow = Keyboard.addListener(showEvent, (event) => {
-      const height = event.endCoordinates?.height ?? 0;
-      // Android already resizes the window; only add scroll padding on iOS.
-      if (Platform.OS === 'ios') setKeyboardPad(height);
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({
-          y: Math.max(0, goalBlockY.current - 12),
-          animated: true,
-        });
-      });
-    });
-    const onHide = Keyboard.addListener(hideEvent, () => setKeyboardPad(0));
-    return () => {
-      onShow.remove();
-      onHide.remove();
-    };
-  }, []);
-
   // Native only: focus the name field once after Get Started. Web relies on a
-  // real tap so the IME opens inside a user gesture.
+  // real tap so the IME opens inside a user gesture. Does not steal taps on the goal box.
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS === 'web' || !tierReady) return;
@@ -141,15 +120,6 @@ export default function GoalScreen() {
     : overLimit
       ? `Please trim to ${FREE_MAX_CHARS} characters.`
       : `At least ${FREE_MIN_CHARS} characters.`;
-
-  const scrollGoalIntoView = () => {
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({
-        y: Math.max(0, goalBlockY.current - 12),
-        animated: true,
-      });
-    });
-  };
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -195,6 +165,7 @@ export default function GoalScreen() {
       keyboard
       onBack={handleBack}
       scrollRef={scrollRef}
+      onScroll={onScroll}
       contentContainerStyle={[styles.body, { paddingBottom: 24 + keyboardPad }]}
       footer={
         <StickyBottomButton
@@ -221,18 +192,14 @@ export default function GoalScreen() {
           autoCorrect={false}
           maxLength={NAME_MAX}
           returnKeyType="next"
+          onFocus={() => onInputFocus(nameInputRef.current)}
           onSubmitEditing={() => goalInputRef.current?.focus()}
           style={styles.nameInput}
           accessibilityLabel="Your name"
         />
       </Card>
 
-      <View
-        style={styles.field}
-        onLayout={(event) => {
-          goalBlockY.current = event.nativeEvent.layout.y;
-        }}
-      >
+      <View style={styles.field}>
         <Text style={[styles.limitCaption, overLimit && styles.hintError]}>
           {FREE_MIN_CHARS}–{FREE_MAX_CHARS} characters
         </Text>
@@ -246,7 +213,8 @@ export default function GoalScreen() {
           autoCorrect
           autoCapitalize="sentences"
           accessibilityLabel="Describe your goals"
-          onFocus={scrollGoalIntoView}
+          onFocus={() => onInputFocus(goalInputRef.current)}
+          onContentSizeChange={() => ensureVisible(goalInputRef.current)}
           hint={
             <Text style={[styles.hint, overLimit && styles.hintError]}>{hintText}</Text>
           }

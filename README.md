@@ -31,8 +31,8 @@ Docs: [Architecture](docs/ARCHITECTURE.md) · [RevenueCat](docs/REVENUECAT_INTEG
   Onboarding / Get Started
             |
             v
-     Goal (300-1000 free
-      or 500-5000 Premium)
+     Goal (300-2000 free
+      or Premium standing+ambitions 1000-5000 each)
             |
             v
           Home  ------------------+
@@ -60,7 +60,7 @@ Phone shots from the running Android APK (`assets/screenshots/`). One sentence u
 
 <p align="center">
   <img src="assets/screenshots/02-goal.jpg" alt="Goal" width="200" /><br/>
-  <em>Goal: write who you are and what you want (free: 300–1000 characters).</em>
+  <em>Goal: write who you are and what you want (free: 300–2000 characters).</em>
 </p>
 
 <p align="center">
@@ -95,7 +95,7 @@ Phone shots from the running Android APK (`assets/screenshots/`). One sentence u
 
 <p align="center">
   <img src="assets/screenshots/09-premium-goals.jpg" alt="Premium goals" width="200" /><br/>
-  <em>Premium goals: longer situation text (500–5000 characters) for trajectory-aware scoring.</em>
+  <em>Premium goals: current standing and future ambitions (1000–5000 characters each) for trajectory-aware scoring.</em>
 </p>
 
 <p align="center">
@@ -137,7 +137,7 @@ Discovery apps keep showing more listings. Students already find internships, ha
 
 The core loop is short:
 
-1. Write who you are and what you want (free: 300–1000 characters; Premium: 500–5000).
+1. Write who you are and what you want (free: 300–2000 characters; Premium: current standing + future ambitions 1000–5000 each).
 2. Paste opportunity text and/or attach a screenshot (no URL fetch, no PDF scoring).
 3. Read a 1–10 match score, insights, and (on Premium) preparation guidance.
 4. Decide whether to spend the weekend — or skip it.
@@ -150,12 +150,12 @@ Everything stays on the device for the session (until uninstall).
 |---|---|---|
 | Login | Not required | Not required. Sign-in is a **demo identity**, not a paywall. |
 | Evaluations | 3 per local calendar day | Unlimited |
-| Goal length | Minimum **300 characters**, maximum **1000 characters** | Minimum **500 characters**, maximum **5000 characters** |
+| Goal length | Minimum **300 characters**, maximum **2000 characters** | Current standing and future ambitions: **1000–5000 characters each** |
 | Results | Title, source, score, label, key insights | Same, plus unlocked guidance |
 | Form-fill help | Not available | Opens only when the opportunity looks like an **application / form** |
 | History tab | Locked teaser → paywall | On-device list (newest first, capped at 50) plus a pattern card |
 | Home “Recent evaluations” | Locked | Last three saved evaluations |
-| Structured profile | Optional demo sign-in; guest sees the goal | Post-subscribe onboarding (grade, career, situation, optional universities and resume) |
+| Structured profile | Optional demo sign-in; guest sees the goal | Post-subscribe onboarding (grade, career, current standing, future ambitions, optional universities and resume) |
 
 Signing in does **not** unlock Premium. Premium is granted only when RevenueCat `CustomerInfo` has an active **`vetly_pro`** entitlement (or, in Expo Go `__DEV__` only, a labeled local demo unlock that is **not** a store purchase).
 
@@ -167,7 +167,7 @@ Live evaluations call a **server** route (`POST /api/evaluate`) that scores with
 |---|---|---|
 | Opportunity text (+ screenshot image when attached) | Yes | Yes |
 | Saved goal | Yes | Yes |
-| Grade, universities, career, activities, situation | No | Yes (when the structured profile exists) |
+| Grade, universities, career, activities, current standing, future ambitions | No | Yes (when the structured profile exists) |
 | Resume file bytes / local URI | Never | Never |
 
 Screenshot image bytes are sent to the scoring API for vision when attached (alongside pasted text and goal). Resume file bytes stay on device and are never sent. The server does **not** fetch URLs and does **not** score PDFs. Netlify’s static web preview (https://vetly-f99d6523.netlify.app) **does not score or purchase** — use the **Android APK** + https://vetly.expo.app for live Evaluate and Test Store IAP.
@@ -182,7 +182,7 @@ Screenshot image bytes are sent to the scoring API for vision when attached (alo
 
 1. Install the **standalone Android APK** (not Expo Go): https://expo.dev/artifacts/eas/RRDNncxXCVsmL3QhXYUjopyBMgrZDeWWG37JiM7Muq4.apk.
 2. Open the app. After splash, tap **Get Started**. Do not tap demo sign-in / Google / Apple.
-3. Write a goal (300–1000 characters on free) → **Continue**.
+3. Write a goal (300–2000 characters on free) → **Continue**.
 4. Home → **Evaluate an opportunity**. Paste text and/or add a screenshot (no bare-URL fetch, no PDF) → **Analyze**. Scoring hits https://vetly.expo.app (OpenAI **gpt-5.5**).
 5. Read the score vs your goal. That is the product: know before you go.
 6. Optional: Subscribe on the APK via RevenueCat Test Store ($10.99/mo or $80.99/yr) — sandbox, **no real charge**.
@@ -241,7 +241,7 @@ The user describes who they are and what they are aiming for. Every later evalua
 - First run: **Continue** saves the goal and resets the stack to Home (back cannot return to splash / onboarding).
 - From Settings: `/goal?mode=edit` → **Save** returns to Settings.
 
-Free: **300–1000 characters**. Premium: **500–5000 characters**.
+Free: **300–2000 characters**. Premium: **current standing** and **future ambitions**, **1000–5000 characters each**.
 
 ### Sign up (`/signup`) — not Premium
 
@@ -265,7 +265,7 @@ Paste opportunity text (max 2000 characters) and/or **Upload Screenshot** (`expo
 - Free with 0 remaining today → paywall (the evaluation is not run).
 - Otherwise the client POSTs to `/api/evaluate` (absolute URL on native via `EXPO_PUBLIC_API_URL`, e.g. https://vetly.expo.app):
   - **Free:** opportunity text + goal (+ screenshot image bytes when attached). No premium profile fields.
-  - **Premium:** same, plus grade, universities, career, activities, situation when the structured profile exists.
+  - **Premium:** same, plus grade, universities, career, activities, current standing, future ambitions when the structured profile exists.
   - Resume **file bytes** and local URI are **never** sent. URL contents are **never** fetched.
   - Server scores with OpenAI **gpt-5.5**; key stays on the host.
   - Premium: append to local History (on-device until uninstall).
@@ -314,7 +314,7 @@ After a real unlock (or the labeled `__DEV__` demo unlock), if the structured pr
 
 ### Premium onboarding (`/premium-onboarding`) and Resume (`/resume`)
 
-After Upgrade, a structured profile: grade level, optional target universities, dream career, current activities, situation (≥20 characters). Continue writes `src/storage/profileStorage.ts`. If Analyze still has no goal text, the profile is turned into a goal string.
+After Upgrade, a structured profile: grade level, optional target universities, dream career, current activities, current standing and future ambitions (1000–5000 characters each). Continue writes `src/storage/profileStorage.ts`. If Analyze still has no goal text, the profile is turned into a goal string.
 
 Then **Resume**: optional **image** only (photo / screenshot of a resume). Only a **local URI + file name** are stored. Bytes are never uploaded, never parsed, never committed. PDF is not offered — Vetly does not extract resume PDF text. Skip is allowed; Profile / Settings can add a file later. First-time setup then lands on Home, or Results if an evaluation is still in memory (so Unlock from Results still shows the guidance they paid for).
 
@@ -414,7 +414,7 @@ Local History (`vetly:history`) is **Premium-only**. Free Analyze still may upse
 **Context sent to the model**
 
 - **Free:** opportunity text + goal (+ screenshot image bytes when attached for vision). Resume bytes are never sent.
-- **Premium:** also grade, universities, dream career, activities, situation when the structured profile exists.
+- **Premium:** also grade, universities, dream career, activities, current standing, future ambitions when the structured profile exists.
 - History is **not** in this call (History-tab `coherence.ts` only). Screenshot image bytes are sent for vision when attached; resume bytes stay on device.
 
 `src/services/score.ts` maps the integer to label and color. `src/types/evaluation.ts` is the UI contract.

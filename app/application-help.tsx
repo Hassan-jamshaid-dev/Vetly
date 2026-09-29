@@ -82,7 +82,7 @@ export default function ApplicationHelpScreen() {
 
   const formHelp = evaluation.formHelp.filter((line) => line.trim().length > 0);
   const highlight = uniqueLines([evaluation.helps, evaluation.fills]);
-  const careful = uniqueLines([evaluation.hurts, evaluation.doesNotFill]);
+  const careful = uniqueLines([evaluation.hurts]);
 
   const copyStarter = async () => {
     try {
