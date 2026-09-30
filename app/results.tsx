@@ -71,10 +71,9 @@ export default function ResultsScreen() {
   // Helps = how it helps + gaps it fills (dedupe by trimmed text).
   const helpsAll = uniqueLines([...evaluation.helps, ...evaluation.fills]);
   const downsidesAll = uniqueLines(evaluation.hurts);
-  // Low scores: ~2 helps and ~4 downsides. Higher scores stay short too.
-  const lowScore = evaluation.score >= 1 && evaluation.score <= 4;
-  const helpsLines = helpsAll.slice(0, lowScore ? 2 : 3);
-  const downsides = downsidesAll.slice(0, lowScore ? 4 : 3);
+  const { helps: helpsCap, hurts: hurtsCap } = scoreBandCaps(evaluation.score);
+  const helpsLines = helpsAll.slice(0, helpsCap);
+  const downsides = downsidesAll.slice(0, hurtsCap);
 
   return (
     <ScreenWrapper title="Results" onBack={goBack} contentContainerStyle={styles.content}>
@@ -168,6 +167,15 @@ function uniqueLines(items: string[]): string[] {
     out.push(trimmed);
   }
   return out;
+}
+
+/** Helps / downside caps by score — must match evaluate+api.ts. */
+function scoreBandCaps(score: number): { helps: number; hurts: number } {
+  if (score >= 10) return { helps: 4, hurts: 1 };
+  if (score >= 7) return { helps: 4, hurts: 2 };
+  if (score >= 5) return { helps: 3, hurts: 3 };
+  if (score === 4) return { helps: 2, hurts: 4 };
+  return { helps: 1, hurts: 4 };
 }
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];

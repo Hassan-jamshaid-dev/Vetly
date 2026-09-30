@@ -11,13 +11,8 @@ export type StudentProfile = {
   gradeLevel: string;
   universities: string[];
   dreamCareer: string;
-  /** Clubs, projects, standing — up to 5000 characters. */
+  /** Clubs, projects, skills — up to 5000 characters. */
   activities: string;
-  /**
-   * Legacy field. No longer collected in the UI.
-   * On load, folded into activities when activities is empty.
-   */
-  currentStanding: string;
   /** Where the student wants to go (premium). */
   futureAmbitions: string;
   /**
@@ -34,7 +29,6 @@ export const EMPTY_PROFILE: StudentProfile = {
   universities: [],
   dreamCareer: '',
   activities: '',
-  currentStanding: '',
   futureAmbitions: '',
   situation: '',
   resumeUri: null,
@@ -94,7 +88,6 @@ function normalizeProfile(raw: Record<string, unknown>): StudentProfile | null {
     universities: raw.universities,
     dreamCareer: raw.dreamCareer,
     activities,
-    currentStanding: '',
     futureAmbitions,
     situation,
     resumeUri: (raw.resumeUri as string | null) ?? null,
@@ -120,7 +113,6 @@ export async function setProfile(profile: StudentProfile): Promise<void> {
   const next: StudentProfile = {
     ...profile,
     activities: profile.activities.slice(0, ACTIVITIES_MAX),
-    currentStanding: '',
     futureAmbitions: profile.futureAmbitions.slice(0, AMBITIONS_MAX),
     situation: combineSituation(profile.activities, profile.futureAmbitions),
   };

@@ -459,9 +459,14 @@ Keep the response short enough for a phone Results screen. Do not dump walls of 
 
 - "insights": exactly 3-4 concise lines that explain WHY the score exists (helps / gap / note). One short sentence each. Never more than 4.
 - Do NOT invent a "doesNotFill" / "what it doesn't help with" list. That section was removed from the app. If you emit "doesNotFill", it must be []. Put residual gaps into insights or hurts instead.
-- Score 1-4 (weak/poor fit): about 2 items in "helps" (fills may add at most a couple of short gap-fill lines), and about 4 items in "hurts". Prefer hurts over padding helps.
-- Score 5-10: keep "helps", "fills", and "hurts" short too — roughly 2-3 helps and 2-3 hurts. No filler.
-- "guidance": one practical paragraph for what to do next. Not a second essay.
+- SCORE BAND LIST COUNTS (helps + fills are merged in the UI into "How it helps"; count the TOTAL of unique helps+fills together):
+  - Score 10: about 4 how-it-helps points, and at most 1 downside in "hurts" (0 downsides is allowed).
+  - Score 7-9: exactly about 4 helps and 2 downsides.
+  - Score 5-6: neutral — about 3 helps and 3 downsides.
+  - Score 4: about 2 helps and 4 downsides.
+  - Score 1-3: about 1 help and 4 downsides.
+- Prefer real points over padded lists. Do not invent filler to hit a count when evidence is thin — stay at or under the band maximums.
+- "guidance": one practical paragraph for what to do next. Not a second essay. Shown Premium-only in the app.
 - "hasApplication" / "formHelp" only when the supplied pasted text or screenshot actually contains form questions (not merely an apply CTA).
 - Premium profile context may include "Current activities" (up to 5000 characters) and "Future ambitions" (plus legacy "Situation" on older payloads). Use activities as where the student is now; do not expect a separate currentStanding essay.
 
@@ -507,17 +512,21 @@ Integer from 1-10.
 Exactly 3-4 concise observations that explain WHY the score exists (top insight style: how it helps / gap / note). Do not pad.
 
 "fills":
-Specific gaps in the student's current profile that this opportunity addresses. Keep short.
+Specific gaps in the student's current profile that this opportunity addresses. Keep short. Counted with "helps" toward the score-band help total.
 
 "helps":
 Concrete ways this opportunity could help the student's trajectory or application.
-- If score is 1-4: about 2 valid points only. Do not pad with weak filler.
-- If score is 5-10: about 2-3 concrete points (still no fluff).
-Combine "how it helps" and "gaps it fills" into helps + fills — the UI merges them.
+Combine "how it helps" and "gaps it fills" into helps + fills — the UI merges them into one list.
+Match the SCORE BAND LIST COUNTS above (score 10 → ~4 total helps; 7-9 → 4; 5-6 → 3; 4 → 2; 1-3 → 1).
 
 "hurts" (Downsides):
-- If score is 1-4: about 4 concrete risks, opportunity costs, time costs, redundancy, preparation gaps, or trajectory conflicts.
-- If score is 5-10: about 2-3 real downsides. Prefer real points over padded lists. Higher scores stay short too.
+Match the SCORE BAND LIST COUNTS above:
+- Score 10: at most 1 downside (0 allowed).
+- Score 7-9: 2 downsides.
+- Score 5-6: 3 downsides.
+- Score 4: 4 downsides.
+- Score 1-3: 4 downsides.
+Concrete risks, opportunity costs, time costs, redundancy, preparation gaps, or trajectory conflicts — no fluff.
 
 "guidance":
 A practical "what to do" paragraph (Premium-only in the app). Include preparation, timing, and priorities if they pursue it. Keep it tight.
@@ -912,23 +921,44 @@ function parseModelDraft(
   const source = normalizeSource(rawSource, opportunityText, hasScreenshot);
 
   const hasApplication = obj.hasApplication === true;
-  // Cap list sizes to match Results: low scores ~2 helps / ~4 hurts; higher stay short.
+  // Cap list sizes to match Results score bands (helps+fills merge into one UI list).
   const score = clampScore(typeof obj.score === 'number' ? obj.score : Number(obj.score));
-  const helpsCap = score <= 4 ? 2 : 3;
-  const hurtsCap = score <= 4 ? 4 : 3;
+  const { helps: helpsCap, hurts: hurtsCap } = scoreBandCaps(score);
+  const helpsRaw = stringList(obj.helps);
+  const fillsRaw = stringList(obj.fills);
+  const mergedHelps: string[] = [];
+  const seenHelps = new Set<string>();
+  for (const item of [...helpsRaw, ...fillsRaw]) {
+    if (seenHelps.has(item)) continue;
+    seenHelps.add(item);
+    mergedHelps.push(item);
+    if (mergedHelps.length >= helpsCap) break;
+  }
+  const helpsOrigin = new Set(helpsRaw);
+  const helps = mergedHelps.filter((item) => helpsOrigin.has(item));
+  const fills = mergedHelps.filter((item) => !helpsOrigin.has(item));
   return {
     title,
     source,
     score,
     insights: insights.slice(0, 4),
-    fills: stringList(obj.fills).slice(0, helpsCap),
+    fills,
     doesNotFill: [],
-    helps: stringList(obj.helps).slice(0, helpsCap),
+    helps,
     hurts: stringList(obj.hurts).slice(0, hurtsCap),
     guidance: typeof obj.guidance === 'string' ? obj.guidance.trim().slice(0, 2500) : '',
     hasApplication,
     formHelp: hasApplication ? stringList(obj.formHelp) : [],
   };
+}
+
+/** Helps / downside caps by score — must match app/results.tsx. */
+function scoreBandCaps(score: number): { helps: number; hurts: number } {
+  if (score >= 10) return { helps: 4, hurts: 1 };
+  if (score >= 7) return { helps: 4, hurts: 2 };
+  if (score >= 5) return { helps: 3, hurts: 3 };
+  if (score === 4) return { helps: 2, hurts: 4 };
+  return { helps: 1, hurts: 4 };
 }
 
 function normalizeSource(

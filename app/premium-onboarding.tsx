@@ -229,7 +229,6 @@ export default function PremiumOnboardingScreen() {
         universities: nextUniversities,
         dreamCareer: dreamCareer.trim().slice(0, CAREER_MAX),
         activities: activities.trim().slice(0, ACTIVITIES_MAX),
-        currentStanding: '',
         futureAmbitions: futureAmbitions.trim(),
         situation: '',
         resumeUri: existing?.resumeUri ?? null,

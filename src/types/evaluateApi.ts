@@ -5,7 +5,7 @@ export type EvaluateProfilePayload = {
   gradeLevel: string;
   universities: string[];
   dreamCareer: string;
-  /** Current activities / standing — up to 5000 characters. */
+  /** Current activities — up to 5000 characters. */
   activities: string;
   /** Where the student wants to go (1000–5000 when provided). */
   futureAmbitions: string;
